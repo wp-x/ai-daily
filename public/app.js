@@ -10,16 +10,31 @@ const CATEGORY_META = {
   'opinion': { emoji: '💡', label: '观点' }, 'other': { emoji: '📝', label: '其他' },
 };
 
+// Convert score (0-30) to star rating HTML
+function renderStars(score) {
+  const rating = Math.round((score / 30) * 10) / 2; // Convert to 0-5 scale, round to 0.5
+  const fullStars = Math.floor(rating);
+  const hasHalf = rating % 1 !== 0;
+  const emptyStars = 5 - fullStars - (hasHalf ? 1 : 0);
+
+  let html = '<span class="inline-flex items-center gap-0.5" title="' + score + '/30">';
+  for (let i = 0; i < fullStars; i++) html += '<svg class="w-3.5 h-3.5 text-warm-500 fill-current" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/></svg>';
+  if (hasHalf) html += '<svg class="w-3.5 h-3.5 text-warm-500" viewBox="0 0 20 20"><defs><linearGradient id="half"><stop offset="50%" stop-color="currentColor"/><stop offset="50%" stop-color="transparent"/></linearGradient></defs><path fill="url(#half)" d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/></svg>';
+  for (let i = 0; i < emptyStars; i++) html += '<svg class="w-3.5 h-3.5 text-sand-300 dark:text-ink-700" viewBox="0 0 20 20"><path fill="currentColor" d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/></svg>';
+  html += '</span>';
+  return html;
+}
+
 const PRESET_HINTS = {
   gemini: '免费获取: aistudio.google.com/apikey',
-  openai: '获取: platform.openai.com/api-keys',
+  siliconflow: '获取: cloud.siliconflow.cn/account/ak',
   doubao: '获取: console.volcengine.com/ark',
   custom: '填入你的 OpenAI 兼容服务 Key',
 };
 
 const API_PRESETS = {
   gemini: { name: 'Google Gemini' },
-  openai: { name: 'OpenAI' },
+  siliconflow: { name: '硅基流动 (SiliconFlow)' },
   doubao: { name: '豆包 Doubao' },
   custom: { name: '自定义' },
 };
@@ -104,7 +119,7 @@ function renderArticles() {
       <div class="flex items-center gap-3 mb-4">
         <span class="medal ${ranks[i]}">${i+1}</span>
         <span class="category-badge" data-cat="${a.category}">${CATEGORY_META[a.category]?.label||a.category}</span>
-        <span class="score-badge ml-auto">${a.score}/30</span>
+        <span class="ml-auto">${renderStars(a.score)}</span>
       </div>
       <h3 class="text-lg sm:text-xl font-semibold leading-tight mb-3">
         <a href="${a.link}" target="_blank" rel="noopener" class="hover:text-warm-600 dark:hover:text-warm-400 transition">${a.title_zh||a.title}</a>
@@ -128,7 +143,7 @@ function renderArticles() {
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 mb-3 flex-wrap">
             <span class="category-badge" data-cat="${a.category}">${CATEGORY_META[a.category]?.label||a.category}</span>
-            <span class="score-badge">${a.score}/30</span>
+            ${renderStars(a.score)}
           </div>
           <h3 class="article-title group-hover:text-warm-600 dark:group-hover:text-warm-400 transition">
             <a href="${a.link}" target="_blank" rel="noopener" class="hover:underline">${a.title_zh||a.title}</a>

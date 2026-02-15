@@ -238,8 +238,12 @@ function setupSchedules(config) {
 const savedConfig = loadApiConfig();
 if (savedConfig) setupSchedules(savedConfig);
 
-// --- Static ---
-app.use(express.static(join(__dirname, 'public')));
+// Static files with cache control
+app.use(express.static(join(__dirname, 'public'), {
+  maxAge: 0, // Disable caching in development
+  etag: false,
+  lastModified: false,
+}));
 
 // --- SSE for real-time progress ---
 const sseClients = new Set();

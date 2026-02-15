@@ -41,6 +41,7 @@ Thumbs.db
 *.sublime-project
 .cursorindexingignore
 .specstory/
+.spec-workflow/
 
 # Testing & Coverage
 coverage/
