@@ -1,0 +1,16 @@
+services:
+  ai-daily-web:
+    build: .
+    container_name: ai-daily-web
+    restart: unless-stopped
+    ports:
+      - "3456:3456"
+    environment:
+      - SITE_PASSWORD=${SITE_PASSWORD:-}
+      - CONFIG_SECRET=${CONFIG_SECRET:-}
+      - PORT=3456
+    volumes:
+      - ai-daily-data:/app/data
+
+volumes:
+  ai-daily-data:

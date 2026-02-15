@@ -1,0 +1,100 @@
+* { font-family: 'Noto Sans SC', system-ui, -apple-system, sans-serif; }
+body { letter-spacing: -0.01em; }
+
+/* Magazine-style typography */
+.article-title { 
+  @apply text-lg sm:text-xl font-semibold leading-tight tracking-tight mb-3;
+  line-height: 1.3;
+}
+.article-summary { 
+  @apply text-sm sm:text-base leading-relaxed text-sand-600 dark:text-sand-400 font-light mb-4;
+  line-height: 1.7;
+}
+.article-meta { @apply text-xs text-sand-400 flex items-center gap-2; }
+
+/* Category filters */
+.cat-btn {
+  @apply text-xs px-3 py-1.5 rounded-full border border-sand-200 dark:border-ink-700
+         bg-white dark:bg-ink-900 text-sand-500 hover:bg-sand-100 dark:hover:bg-ink-800 hover:text-ink-800 dark:hover:text-ink-100 transition cursor-pointer;
+}
+.cat-btn.active {
+  @apply bg-ink-800 dark:bg-warm-500/20 text-white dark:text-warm-400 border-ink-800 dark:border-warm-500/30;
+}
+
+/* Article cards - magazine style with more breathing room */
+.article-card {
+  @apply bg-white dark:bg-ink-900 rounded-2xl border border-sand-200 dark:border-ink-800 p-6 sm:p-8
+         hover:shadow-lg dark:hover:shadow-none hover:border-sand-300 dark:hover:border-ink-700 transition-all;
+}
+
+/* Top 3 cards - hero style */
+.top-card {
+  @apply bg-white dark:bg-ink-900 rounded-2xl border-2 p-6 sm:p-8 hover:shadow-xl dark:hover:shadow-none transition-all;
+}
+.top-card.gold { @apply border-warm-500/60 bg-warm-500/5 dark:bg-warm-500/5; }
+.top-card.silver { @apply border-sand-300 dark:border-ink-700; }
+.top-card.bronze { @apply border-sand-300 dark:border-ink-700; }
+
+.medal { 
+  @apply inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold;
+}
+.medal.gold { @apply bg-warm-500/20 text-warm-600 dark:text-warm-400; }
+.medal.silver { @apply bg-sand-200 dark:bg-ink-700 text-sand-600 dark:text-sand-400; }
+.medal.bronze { @apply bg-warm-500/10 text-warm-500/80; }
+
+.score-badge { 
+  @apply inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-warm-500/10 text-warm-600 dark:text-warm-400 border border-warm-500/20;
+}
+
+.keyword-tag { 
+  @apply text-xs px-2.5 py-1 rounded-full bg-sand-100 dark:bg-ink-950 border border-sand-200 dark:border-ink-800 text-sand-600 dark:text-sand-400;
+}
+
+.category-badge { @apply text-xs font-medium px-2.5 py-1 rounded-full border; }
+.category-badge[data-cat="ai-ml"] { @apply bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-500/20; }
+.category-badge[data-cat="security"] { @apply bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20; }
+.category-badge[data-cat="engineering"] { @apply bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20; }
+.category-badge[data-cat="tools"] { @apply bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/20; }
+.category-badge[data-cat="opinion"] { @apply bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20; }
+.category-badge[data-cat="other"] { @apply bg-sand-100 dark:bg-ink-800 text-sand-600 dark:text-sand-400 border-sand-200 dark:border-ink-700; }
+
+/* Preset buttons */
+.preset-btn {
+  @apply flex flex-col items-center gap-1 p-4 rounded-xl border border-sand-200 dark:border-ink-700
+         bg-sand-50 dark:bg-ink-950 hover:border-warm-500/40 hover:bg-white dark:hover:bg-ink-900 transition cursor-pointer text-center;
+}
+.preset-btn.active {
+  @apply border-warm-500 bg-warm-500/5 dark:bg-warm-500/10 ring-2 ring-warm-500/20;
+}
+
+/* Test button */
+.test-btn {
+  @apply text-xs px-3 py-1.5 rounded-lg border border-sand-300 dark:border-ink-700 
+         bg-white dark:bg-ink-900 text-sand-600 dark:text-sand-400 
+         hover:border-warm-500/40 hover:text-warm-600 dark:hover:text-warm-400 transition;
+}
+.test-btn:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+html { scroll-behavior: smooth; }
+::selection { @apply bg-warm-500/20; }
+
+/* Magazine-style section headers */
+.section-header {
+  @apply text-xs sm:text-sm font-medium text-warm-600 dark:text-warm-400 tracking-widest uppercase mb-6 sm:mb-8 block;
+  letter-spacing: 0.15em;
+}
+
+/* Settings tabs */
+.settings-tab {
+  @apply text-xs px-4 py-2 text-sand-500 hover:text-ink-800 dark:hover:text-ink-100 transition border-b-2 border-transparent;
+}
+.settings-tab.active {
+  @apply text-ink-800 dark:text-warm-400 border-warm-500;
+}
+
+/* Improved spacing */
+.content-section {
+  @apply mb-12 sm:mb-16;
+}
