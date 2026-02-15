@@ -4,6 +4,8 @@
 
 支持 Gemini、OpenAI、豆包等多个 AI 渠道，内置密码保护和加密存储，可以直接部署到自己的服务器上用。
 
+![界面截图](img/Interface%20screenshot.png)
+
 ## 功能
 
 - 90 个 RSS 源自动抓取，也可以自己增删管理
@@ -29,14 +31,14 @@ docker run -d \
   -e SITE_PASSWORD=你的访问密码 \
   -e CONFIG_SECRET=你的加密密钥 \
   -v ai-daily-data:/app/data \
-  ai-daily-web:latest
+  ghcr.io/wp-x/ai-daily:main-decd157
 ```
 
 或者用 docker-compose：
 
 ```bash
-git clone https://github.com/vigorX777/ai-daily-web.git
-cd ai-daily-web
+git clone https://github.com/wp-x/ai-daily.git
+cd ai-daily
 cp .env.example .env
 # 编辑 .env，填入密码和加密密钥
 docker compose up -d
@@ -45,8 +47,8 @@ docker compose up -d
 ### 手动部署
 
 ```bash
-git clone https://github.com/vigorX777/ai-daily-web.git
-cd ai-daily-web
+git clone https://github.com/wp-x/ai-daily.git
+cd ai-daily
 npm install
 cp .env.example .env
 # 编辑 .env
@@ -159,7 +161,7 @@ ai-daily-web/
 
 ## 致谢
 
-- 原始项目：[ai-daily-digest](https://github.com/vigorX777/ai-daily-digest)
+- 原始项目：[ai-daily-digest](https://github.com/wp-x/ai-daily)
 - RSS 源列表：[HN Popularity Contest](https://refactoringenglish.com/tools/hn-popularity/)
 - AI 模型：[Google Gemini](https://ai.google.dev/) / [OpenAI](https://openai.com/) / [豆包](https://www.volcengine.com/product/doubao)
 
