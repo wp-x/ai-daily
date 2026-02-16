@@ -203,27 +203,37 @@ function setupSchedules(config) {
   console.log(`[schedule] Setting up ${activeSchedules.length} schedule(s)`);
 
   // Single timer checks all schedules every minute
+  let lastTriggeredMinute = -1;
   const timer = setInterval(() => {
     const now = new Date();
     const h = now.getHours(), m = now.getMinutes();
+    const minuteKey = h * 60 + m;
+
+    // Prevent duplicate triggers within the same minute
+    if (minuteKey === lastTriggeredMinute) return;
 
     for (const sched of activeSchedules) {
       if (h === (sched.hour ?? 8) && m === (sched.minute ?? 0)) {
+        if (generationState.running) {
+          console.log('[schedule] Skipped: generation already running');
+          break;
+        }
+        lastTriggeredMinute = minuteKey;
         const cfg = loadApiConfig();
         if (!cfg?.apiKey) continue;
 
-        // Use schedule-specific preset/model or fall back to saved config
+        const preset = sched.preset || cfg.preset || 'auto';
         const apiOpts = {
-          preset: sched.preset || cfg.preset || undefined,
-          baseURL: sched.baseURL || cfg.baseURL || API_PRESETS[sched.preset]?.baseURL || '',
-          model: sched.model || cfg.model || API_PRESETS[sched.preset]?.defaultModel || '',
+          preset: preset === 'auto' ? undefined : preset,
+          baseURL: sched.baseURL || cfg.baseURL || API_PRESETS[preset]?.baseURL || '',
+          model: sched.model || cfg.model || API_PRESETS[preset]?.defaultModel || '',
         };
 
         console.log(`[schedule] Triggering ${sched.label || sched.preset || 'default'} at ${now.toISOString()}`);
         runDigestGeneration(cfg.apiKey, apiOpts, sched.hours || 48, sched.topN || 15).catch(err => {
           console.error(`[schedule] Failed: ${err.message}`);
         });
-        break; // Only one generation at a time
+        break;
       }
     }
   }, 60000);
