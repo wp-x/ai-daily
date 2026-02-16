@@ -59,6 +59,9 @@ function asyncHandler(fn) {
   };
 }
 
+// Health check (no auth)
+app.get('/health', (req, res) => res.send('ok'));
+
 // --- Public share routes (NO auth) ---
 app.get('/api/share/:token', (req, res) => {
   const digest = getDigestByShareToken(req.params.token);
