@@ -31,7 +31,7 @@ docker run -d \
   -e SITE_PASSWORD=你的访问密码 \
   -e CONFIG_SECRET=你的加密密钥 \
   -v ai-daily-data:/app/data \
-  ghcr.io/wp-x/ai-daily:main-decd157
+  ghcr.io/wp-x/ai-daily:latest
 ```
 
 或者用 docker-compose：

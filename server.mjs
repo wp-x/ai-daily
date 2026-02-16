@@ -295,8 +295,8 @@ app.post('/api/digest/generate', asyncHandler(async (req, res) => {
   const apiKey = req.body?.apiKey || config?.apiKey || '';
   if (!apiKey) return res.json({ ok: false, error: 'no_api_key', message: '需要 API Key，请先在设置中配置' });
   const preset = req.body?.preset || config?.preset || 'auto';
-  const baseURL = req.body?.baseURL || config?.baseURL || '';
-  const model = req.body?.model || config?.model || '';
+  const baseURL = req.body?.baseURL || config?.baseURL || API_PRESETS[preset]?.baseURL || '';
+  const model = req.body?.model || config?.model || API_PRESETS[preset]?.defaultModel || '';
   const hours = req.body?.hours || 48;
   const topN = req.body?.topN || 15;
   const apiOpts = { preset: preset === 'auto' ? undefined : preset, baseURL, model };
@@ -315,10 +315,12 @@ async function runDigestGeneration(apiKey, apiOpts, hours, topN) {
     const customSources = getRssSources();
     const sources = customSources && customSources.length > 0 ? customSources : RSS_FEEDS;
 
+    console.log(`[digest] 开始生成日报 (${sources.length} 源, ${hours}h, top${topN})`);
     saveDigest(dateStr, { hours, status: 'generating', totalFeeds: sources.length });
     const { articles: allArticles, successCount } = await fetchAllFeeds(sources, (done, total, ok, fail) => {
       updateGenerationState({ progress: `抓取进度: ${done}/${total} 源 (${ok} 成功, ${fail} 失败)` });
     });
+    console.log(`[feeds] 共抓取 ${allArticles.length} 篇文章 (${successCount} 源成功)`);
     if (allArticles.length === 0) throw new Error('没有抓取到任何文章');
 
     // Deduplicate by link URL
@@ -337,6 +339,7 @@ async function runDigestGeneration(apiKey, apiOpts, hours, topN) {
     const recent = dedupedArticles.filter(a => a.pubDate.getTime() > cutoff.getTime());
     if (recent.length === 0) throw new Error(`最近 ${hours} 小时内没有找到文章`);
 
+    console.log(`[scoring] AI 评分中 (${recent.length} 篇)...`);
     updateGenerationState({ step: 'scoring', progress: `AI 评分中 (${recent.length} 篇)...` });
     const scores = await scoreArticles(recent, apiKey, apiOpts, (done, total) => {
       updateGenerationState({ progress: `AI 评分: ${done}/${total} 批次` });
@@ -349,6 +352,7 @@ async function runDigestGeneration(apiKey, apiOpts, hours, topN) {
     scored.sort((a, b) => b.score - a.score);
     const top = scored.slice(0, topN);
 
+    console.log(`[summarize] 生成摘要 (${top.length} 篇)...`);
     updateGenerationState({ step: 'summarizing', progress: `生成摘要 (${top.length} 篇)...` });
     const indexed = top.map((a, i) => ({ ...a, index: i }));
     const summaries = await summarizeArticles(indexed, apiKey, apiOpts, (done, total) => {
@@ -365,6 +369,7 @@ async function runDigestGeneration(apiKey, apiOpts, hours, topN) {
       };
     });
 
+    console.log('[highlights] 生成今日看点...');
     updateGenerationState({ step: 'highlights', progress: '生成今日看点...' });
     const highlights = await generateHighlights(final.map(a => ({ ...a, titleZh: a.title_zh })), apiKey, apiOpts);
 

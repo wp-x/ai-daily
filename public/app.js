@@ -27,14 +27,12 @@ function renderStars(score) {
 
 const PRESET_HINTS = {
   gemini: '免费获取: aistudio.google.com/apikey',
-  siliconflow: '获取: cloud.siliconflow.cn/account/ak',
   doubao: '获取: console.volcengine.com/ark',
   custom: '填入你的 OpenAI 兼容服务 Key',
 };
 
 const API_PRESETS = {
   gemini: { name: 'Google Gemini' },
-  siliconflow: { name: '硅基流动 (SiliconFlow)' },
   doubao: { name: '豆包 Doubao' },
   custom: { name: '自定义' },
 };
@@ -513,7 +511,8 @@ function watchStatus() {
   const text = document.getElementById('statusText');
   banner.classList.remove('hidden');
   if (statusEventSource) statusEventSource.close();
-  statusEventSource = new EventSource('/api/status/stream');
+  const sseUrl = authToken ? `/api/status/stream?token=${authToken}` : '/api/status/stream';
+  statusEventSource = new EventSource(sseUrl);
   statusEventSource.onmessage = (e) => {
     try {
       const state = JSON.parse(e.data);
@@ -529,6 +528,8 @@ function watchStatus() {
   statusEventSource.onerror = () => {
     statusEventSource.close();
     statusEventSource = null;
+    text.textContent = '连接中断，刷新页面重试';
+    setTimeout(() => banner.classList.add('hidden'), 3000);
   };
 }
 
