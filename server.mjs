@@ -206,14 +206,14 @@ function setupSchedules(config) {
   console.log(`[schedule] Setting up ${activeSchedules.length} schedule(s)`);
 
   // Single timer checks all schedules every minute
-  let lastTriggeredMinute = -1;
+  let lastTriggeredKey = '';
   const timer = setInterval(() => {
     const now = new Date();
     const h = now.getHours(), m = now.getMinutes();
-    const minuteKey = h * 60 + m;
+    const triggerKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}_${h * 60 + m}`;
 
-    // Prevent duplicate triggers within the same minute
-    if (minuteKey === lastTriggeredMinute) return;
+    // Prevent duplicate triggers within the same minute (includes date to allow next-day runs)
+    if (triggerKey === lastTriggeredKey) return;
 
     for (const sched of activeSchedules) {
       if (h === (sched.hour ?? 8) && m === (sched.minute ?? 0)) {
@@ -221,7 +221,7 @@ function setupSchedules(config) {
           console.log('[schedule] Skipped: generation already running');
           break;
         }
-        lastTriggeredMinute = minuteKey;
+        lastTriggeredKey = triggerKey;
         const cfg = loadApiConfig();
         if (!cfg?.apiKey) continue;
 

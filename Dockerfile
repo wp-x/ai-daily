@@ -18,6 +18,8 @@ RUN mkdir -p /app/data && \
 
 USER appuser
 
+ENV TZ=Asia/Shanghai
+
 EXPOSE 3456
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \

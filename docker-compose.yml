@@ -8,6 +8,7 @@ services:
     environment:
       - SITE_PASSWORD=${SITE_PASSWORD:-}
       - CONFIG_SECRET=${CONFIG_SECRET:-}
+      - TZ=${TZ:-Asia/Shanghai}
       - PORT=3456
     volumes:
       - ai-daily-data:/app/data
