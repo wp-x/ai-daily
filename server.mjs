@@ -317,36 +317,28 @@ function getApiOpts() {
 
 // ── Pre-translate all articles after digest generation ────────────
 async function preTranslateArticles(articles, apiOpts) {
-  console.log(`[translate] Pre-translating ${articles.length} articles in background...`);
-  let done = 0;
+  console.log(`[translate] Pre-translating ${articles.length} articles one by one...`);
+  let done = 0, skipped = 0;
   for (const article of articles) {
     const url = article.link || article.url;
     if (!url) continue;
-    if (getTranslation(url)) { done++; continue; } // already cached
+    if (getTranslation(url)) { skipped++; continue; } // already in DB
     try {
-      // Collect full stream into result and save to DB
-      let fullText = '';
-      for await (const chunk of translateArticleStream(
+      await translateArticle(
         url,
         article.title || '',
         article.description || article.summary || '',
         apiOpts
-      )) {
-        // Extract text from SSE events
-        const m = chunk.match(/^event:chunk\ndata:(.+)/);
-        if (m) {
-          try { fullText += JSON.parse(m[1]).text || ''; } catch {}
-        }
-      }
+      );
       done++;
-      console.log(`[translate] Pre-translated ${done}/${articles.length}: ${url.slice(0, 60)}`);
+      console.log(`[translate] ${done}/${articles.length} done: ${url.slice(0, 70)}`);
     } catch (e) {
-      console.warn(`[translate] Pre-translate failed for ${url}: ${e.message}`);
+      console.warn(`[translate] Failed (${url.slice(0, 60)}): ${e.message}`);
     }
-    // Small delay between articles to avoid rate limiting
-    await new Promise(r => setTimeout(r, 800));
+    // 1.5s between requests — avoid rate limiting, one article at a time
+    await new Promise(r => setTimeout(r, 1500));
   }
-  console.log(`[translate] Pre-translation complete: ${done}/${articles.length}`);
+  console.log(`[translate] Complete — translated: ${done}, skipped (cached): ${skipped}`);
 }
 
 // Non-streaming fallback (kept for compatibility)
