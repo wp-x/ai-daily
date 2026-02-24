@@ -9,9 +9,7 @@ import { generateHighlights } from './lib/highlights.mjs';
 import { saveDigest, saveArticles, getDigest, getDigestList, setDigestStatus, setDigestHighlights, getStats, createShareToken, getDigestByShareToken, saveRssSources, getRssSources, saveTranslation, getTranslation, getTranslationMap, deleteTranslation, pruneTranslations } from './lib/db.mjs';
 import { authMiddleware, isPasswordSet, setPassword, verifyPassword, verifySession, getClientIp, isLocked, getRemainingLockTime } from './lib/auth.mjs';
 import { saveApiConfig, loadApiConfig, API_PRESETS } from './lib/config.mjs';
-import { translateArticle } from './lib/translate.mjs';
-import { translateArticleStream } from './lib/translate.mjs';
-import { batchTranslateArticles } from './lib/translate.mjs';
+import { translateArticle, translateArticleStream, batchTranslateArticles } from './lib/translate.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -401,7 +399,7 @@ app.post('/api/article/retranslate', asyncHandler(async (req, res) => {
   const opts = getApiOpts();
   if (!opts.apiKey) return res.status(400).json({ ok: false, error: '请先配置 API Key' });
   deleteTranslation(url);
-  const result = await translateArticle(decodeURIComponent(url), decodeURIComponent(title), decodeURIComponent(desc), opts);
+  const result = await translateArticle(url, title, desc, opts);
   res.json(result);
 }));
 

@@ -246,7 +246,7 @@ if ('serviceWorker' in navigator) {
     })
       .then(r => r.json())
       .then(d => {
-        if (d.ok) { preCache[currentUrl] = { ...d, ready: true }; showInstant(d); }
+        if (d.ok) { preCache[currentUrl] = { ...d, ready: true }; showInstant(d); markReadyArticles(); }
         else showError(d.error || '重新翻译失败', currentUrl);
       })
       .catch(() => showError('网络错误', currentUrl));
@@ -441,7 +441,7 @@ if ('serviceWorker' in navigator) {
     tmBody.innerHTML = '';
     const paras = (data.content || '').split(/\n\n+/).filter(Boolean);
     tmBody.innerHTML = paras.map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
-    appendOrigLink(data.url || tmOrig.href);
+    appendOrigLink(data.url || currentUrl || tmOrig.href);
   }
 
   // Attach click handlers after digest renders
