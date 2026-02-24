@@ -11,6 +11,7 @@ import { authMiddleware, isPasswordSet, setPassword, verifyPassword, verifySessi
 import { saveApiConfig, loadApiConfig, API_PRESETS } from './lib/config.mjs';
 import { translateArticle } from './lib/translate.mjs';
 import { translateArticleStream } from './lib/translate.mjs';
+import { batchTranslateArticles } from './lib/translate.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -324,26 +325,45 @@ function getApiOpts() {
 
 // ── Pre-translate all articles after digest generation ────────────
 async function preTranslateArticles(articles, apiOpts) {
-  console.log(`[translate] Pre-translating ${articles.length} articles one by one...`);
-  translateState = { running: true, total: articles.length, done: 0, current: '' };
-  let skipped = 0;
-  for (const article of articles) {
-    const url = article.link || article.url;
-    if (!url) continue;
-    if (getTranslation(url)) { skipped++; translateState.done++; continue; }
-    translateState.current = url;
+  const BATCH = 5;
+  const toProcess = articles.filter(a => (a.link || a.url));
+  console.log(`[translate] Pre-translating ${toProcess.length} articles in batches of ${BATCH}...`);
+  translateState = { running: true, total: toProcess.length, done: 0, current: '' };
+
+  for (let i = 0; i < toProcess.length; i += BATCH) {
+    const batch = toProcess.slice(i, i + BATCH);
+    const batchItems = batch.map(a => ({
+      url:   a.link || a.url,
+      title: a.title || '',
+      desc:  a.description || a.summary || '',
+    }));
+
+    const batchLabel = `[${i+1}-${Math.min(i+BATCH, toProcess.length)}/${toProcess.length}]`;
+    console.log(`[translate] Batch ${batchLabel}`);
+
     try {
-      await translateArticle(url, article.title || '', article.description || article.summary || '', apiOpts);
-      translateState.done++;
-      console.log(`[translate] ${translateState.done}/${articles.length}: ${url.slice(0, 70)}`);
+      await batchTranslateArticles(batchItems, apiOpts);
     } catch (e) {
-      console.warn(`[translate] Failed (${url.slice(0, 60)}): ${e.message}`);
-      translateState.done++;
+      console.warn(`[translate] Batch failed, retrying one-by-one: ${e.message}`);
+      // Fallback: translate individually if batch fails
+      for (const item of batchItems) {
+        if (getTranslation(item.url)) continue;
+        try {
+          await translateArticle(item.url, item.title, item.desc, apiOpts);
+        } catch (e2) {
+          console.warn(`[translate] Single failed (${item.url.slice(0,50)}): ${e2.message}`);
+        }
+        await new Promise(r => setTimeout(r, 1000));
+      }
     }
-    await new Promise(r => setTimeout(r, 1500));
+
+    translateState.done = Math.min(i + BATCH, toProcess.length);
+    // 2s between batches
+    if (i + BATCH < toProcess.length) await new Promise(r => setTimeout(r, 2000));
   }
-  translateState = { running: false, total: articles.length, done: translateState.done, current: '' };
-  console.log(`[translate] Complete — done: ${translateState.done}, skipped (cached): ${skipped}`);
+
+  translateState = { running: false, total: toProcess.length, done: toProcess.length, current: '' };
+  console.log(`[translate] Pre-translation complete`);
 }
 
 // Non-streaming fallback (kept for compatibility)
