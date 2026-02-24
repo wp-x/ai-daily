@@ -6,7 +6,7 @@ import { fetchAllFeeds } from './lib/feeds.mjs';
 import { scoreArticles } from './lib/scoring.mjs';
 import { summarizeArticles } from './lib/summarize.mjs';
 import { generateHighlights } from './lib/highlights.mjs';
-import { saveDigest, saveArticles, getDigest, getDigestList, setDigestStatus, setDigestHighlights, getStats, createShareToken, getDigestByShareToken, saveRssSources, getRssSources, saveTranslation, getTranslation, getTranslationMap } from './lib/db.mjs';
+import { saveDigest, saveArticles, getDigest, getDigestList, setDigestStatus, setDigestHighlights, getStats, createShareToken, getDigestByShareToken, saveRssSources, getRssSources, saveTranslation, getTranslation, getTranslationMap, deleteTranslation, pruneTranslations } from './lib/db.mjs';
 import { authMiddleware, isPasswordSet, setPassword, verifyPassword, verifySession, getClientIp, isLocked, getRemainingLockTime } from './lib/auth.mjs';
 import { saveApiConfig, loadApiConfig, API_PRESETS } from './lib/config.mjs';
 import { translateArticle } from './lib/translate.mjs';
@@ -253,6 +253,12 @@ function setupSchedules(config) {
 const savedConfig = loadApiConfig();
 if (savedConfig) setupSchedules(savedConfig);
 
+// Prune old translations on startup (keep 30 days)
+setImmediate(() => {
+  const pruned = pruneTranslations(30);
+  if (pruned > 0) console.log(`[translate] Pruned ${pruned} expired translations`);
+});
+
 // Static files with cache control
 app.use(express.static(join(__dirname, 'public'), {
   maxAge: 0, // Disable caching in development
@@ -289,6 +295,7 @@ app.get('/api/status/stream', (req, res) => {
 
 // --- Digest routes ---
 let generationState = { running: false, step: '', progress: '', startedAt: null };
+let translateState  = { running: false, total: 0, done: 0, current: '' };
 
 app.get('/api/digest/latest', (req, res) => {
   const digest = getDigest(null);
@@ -318,27 +325,25 @@ function getApiOpts() {
 // ── Pre-translate all articles after digest generation ────────────
 async function preTranslateArticles(articles, apiOpts) {
   console.log(`[translate] Pre-translating ${articles.length} articles one by one...`);
-  let done = 0, skipped = 0;
+  translateState = { running: true, total: articles.length, done: 0, current: '' };
+  let skipped = 0;
   for (const article of articles) {
     const url = article.link || article.url;
     if (!url) continue;
-    if (getTranslation(url)) { skipped++; continue; } // already in DB
+    if (getTranslation(url)) { skipped++; translateState.done++; continue; }
+    translateState.current = url;
     try {
-      await translateArticle(
-        url,
-        article.title || '',
-        article.description || article.summary || '',
-        apiOpts
-      );
-      done++;
-      console.log(`[translate] ${done}/${articles.length} done: ${url.slice(0, 70)}`);
+      await translateArticle(url, article.title || '', article.description || article.summary || '', apiOpts);
+      translateState.done++;
+      console.log(`[translate] ${translateState.done}/${articles.length}: ${url.slice(0, 70)}`);
     } catch (e) {
       console.warn(`[translate] Failed (${url.slice(0, 60)}): ${e.message}`);
+      translateState.done++;
     }
-    // 1.5s between requests — avoid rate limiting, one article at a time
     await new Promise(r => setTimeout(r, 1500));
   }
-  console.log(`[translate] Complete — translated: ${done}, skipped (cached): ${skipped}`);
+  translateState = { running: false, total: articles.length, done: translateState.done, current: '' };
+  console.log(`[translate] Complete — done: ${translateState.done}, skipped (cached): ${skipped}`);
 }
 
 // Non-streaming fallback (kept for compatibility)
@@ -357,13 +362,28 @@ app.get('/api/article/translate', asyncHandler(async (req, res) => {
 app.post('/api/article/translations/status', (req, res) => {
   const { urls = [] } = req.body || {};
   const map = getTranslationMap(urls);
-  // Return only metadata (no full content) for status check
   const status = {};
   for (const [url, t] of Object.entries(map)) {
     status[url] = { ready: true, titleZh: t.titleZh, summary: t.summary };
   }
   res.json({ ok: true, data: status });
 });
+
+// Translation progress (background pre-translation status)
+app.get('/api/translate/progress', (req, res) => {
+  res.json({ ok: true, data: translateState });
+});
+
+// Force re-translate (clear cache for a URL, then re-translate)
+app.post('/api/article/retranslate', asyncHandler(async (req, res) => {
+  const { url, title = '', desc = '' } = req.body || {};
+  if (!url) return res.status(400).json({ ok: false, error: 'url required' });
+  const opts = getApiOpts();
+  if (!opts.apiKey) return res.status(400).json({ ok: false, error: '请先配置 API Key' });
+  deleteTranslation(url);
+  const result = await translateArticle(decodeURIComponent(url), decodeURIComponent(title), decodeURIComponent(desc), opts);
+  res.json(result);
+}));
 
 // SSE streaming endpoint
 app.get('/api/article/translate/stream', async (req, res) => {

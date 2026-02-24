@@ -1252,3 +1252,37 @@ body { letter-spacing: -0.01em; background: #ece5d5; }
 }
 .tm-orig-footer a:hover { text-decoration: underline; }
 .dark .tm-orig-footer { border-top-color: rgba(255,255,255,0.08); color: rgba(232,223,200,0.4); }
+
+/* Modal action buttons (font size, re-translate) */
+.tm-actions {
+  display: flex; align-items: center; gap: 4px;
+}
+.tm-action-btn {
+  height: 28px; min-width: 28px; padding: 0 8px;
+  border-radius: 6px; border: 1px solid rgba(184,144,44,0.25);
+  background: transparent; color: #a8997e;
+  font-size: 11px; cursor: pointer; transition: all 0.15s;
+  letter-spacing: 0.02em;
+}
+.tm-action-btn:hover { background: rgba(184,144,44,0.1); color: #b8902c; border-color: rgba(184,144,44,0.5); }
+.dark .tm-action-btn { border-color: rgba(255,255,255,0.1); color: rgba(232,223,200,0.4); }
+.dark .tm-action-btn:hover { background: rgba(255,255,255,0.06); color: #c9a030; }
+
+/* Background translation progress banner */
+.translate-progress-banner {
+  position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%);
+  background: rgba(26,23,16,0.92); backdrop-filter: blur(8px);
+  border: 1px solid rgba(184,144,44,0.3); border-radius: 8px;
+  padding: 8px 16px; z-index: 9000;
+  display: flex; align-items: center; gap: 12px;
+  font-size: 11px; color: rgba(201,160,48,0.85); letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.tpb-bar {
+  width: 80px; height: 3px;
+  background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;
+}
+.tpb-fill {
+  height: 100%; background: #b8902c;
+  border-radius: 2px; transition: width 0.4s ease;
+}

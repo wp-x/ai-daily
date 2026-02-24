@@ -203,21 +203,54 @@ if ('serviceWorker' in navigator) {
    ARTICLE TRANSLATION MODAL
    ══════════════════════════════════════════════════════════════ */
 (function initTranslation() {
-  const modal   = document.getElementById('translateModal');
-  const loading = document.getElementById('tmLoading');
-  const errBox  = document.getElementById('tmError');
-  const errMsg  = document.getElementById('tmErrorMsg');
-  const content = document.getElementById('tmContent');
-  const tmTitle = document.getElementById('tmTitle');
-  const tmSumm  = document.getElementById('tmSummary');
-  const tmBody  = document.getElementById('tmBody');
-  const tmClose = document.getElementById('tmClose');
-  const tmOrig  = document.getElementById('tmOrigLink');
-  const tmFall  = document.getElementById('tmFallbackLink');
-  const tmStatus = document.getElementById('tmStatus');
+  const modal        = document.getElementById('translateModal');
+  const loading      = document.getElementById('tmLoading');
+  const errBox       = document.getElementById('tmError');
+  const errMsg       = document.getElementById('tmErrorMsg');
+  const content      = document.getElementById('tmContent');
+  const tmTitle      = document.getElementById('tmTitle');
+  const tmSumm       = document.getElementById('tmSummary');
+  const tmBody       = document.getElementById('tmBody');
+  const tmClose      = document.getElementById('tmClose');
+  const tmOrig       = document.getElementById('tmOrigLink');
+  const tmFall       = document.getElementById('tmFallbackLink');
+  const tmRetranslate = document.getElementById('tmRetranslate');
+  const tmFontInc    = document.getElementById('tmFontInc');
+  const tmFontDec    = document.getElementById('tmFontDec');
   if (!modal) return;
 
-  let currentES = null; // active EventSource
+  let currentES  = null;
+  let currentUrl = null; // dedup: track active URL
+  let currentTitle = '', currentDesc = '';
+  let fontSize = parseInt(localStorage.getItem('tm-font-size') || '15');
+
+  // Apply font size
+  function applyFontSize() {
+    tmBody.style.fontSize = fontSize + 'px';
+    localStorage.setItem('tm-font-size', fontSize);
+  }
+  applyFontSize();
+
+  tmFontInc?.addEventListener('click', () => { fontSize = Math.min(22, fontSize + 1); applyFontSize(); });
+  tmFontDec?.addEventListener('click', () => { fontSize = Math.max(12, fontSize - 1); applyFontSize(); });
+
+  // Re-translate button
+  tmRetranslate?.addEventListener('click', () => {
+    if (!currentUrl) return;
+    tmBody.innerHTML = '';
+    showLoading('正在重新翻译…');
+    fetch('/api/article/retranslate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: currentUrl, title: currentTitle, desc: currentDesc }),
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d.ok) { preCache[currentUrl] = { ...d, ready: true }; showInstant(d); }
+        else showError(d.error || '重新翻译失败', currentUrl);
+      })
+      .catch(() => showError('网络错误', currentUrl));
+  });
 
   function openModal() {
     modal.classList.remove('hidden');
@@ -427,6 +460,12 @@ if ('serviceWorker' in navigator) {
         if (!url || url.startsWith(location.origin)) return;
         e.preventDefault();
 
+        // Dedup: ignore if same URL already loading
+        if (currentUrl === url && !modal.classList.contains('hidden')) return;
+        currentUrl   = url;
+        currentTitle = title;
+        currentDesc  = desc;
+
         tmOrig.href = url;
         tmFall.href = url;
         openModal();
@@ -456,7 +495,50 @@ if ('serviceWorker' in navigator) {
   tmClose.addEventListener('click', closeModal);
   modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+  // Poll background translation progress and update badges
+  let progressTimer = null;
+  function startProgressPolling() {
+    if (progressTimer) return;
+    progressTimer = setInterval(async () => {
+      try {
+        const res = await fetch('/api/translate/progress');
+        const { data } = await res.json();
+        updateProgressBanner(data);
+        if (!data.running) {
+          clearInterval(progressTimer); progressTimer = null;
+          // Refresh badges once done
+          fetchTranslationStatus();
+        }
+      } catch {}
+    }, 3000);
+  }
+
+  function updateProgressBanner(state) {
+    let banner = document.getElementById('translateProgressBanner');
+    if (!state.running) {
+      if (banner) banner.remove();
+      return;
+    }
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'translateProgressBanner';
+      banner.className = 'translate-progress-banner';
+      document.body.appendChild(banner);
+    }
+    const pct = state.total > 0 ? Math.round((state.done / state.total) * 100) : 0;
+    banner.innerHTML = `<span>后台翻译中 ${state.done}/${state.total}</span><div class="tpb-bar"><div class="tpb-fill" style="width:${pct}%"></div></div>`;
+  }
+
   document.addEventListener('digestRendered', () => {
-    setTimeout(() => { attachHandlers(); fetchTranslationStatus(); }, 150);
+    setTimeout(async () => {
+      attachHandlers();
+      fetchTranslationStatus();
+      // Check if background translation is running
+      try {
+        const res = await fetch('/api/translate/progress');
+        const { data } = await res.json();
+        if (data.running) { updateProgressBanner(data); startProgressPolling(); }
+      } catch {}
+    }, 150);
   });
 })();
