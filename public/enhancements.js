@@ -323,6 +323,7 @@ if ('serviceWorker' in navigator) {
 
     es.addEventListener('done', () => {
       flushPending();
+      appendOrigLink(url);
       es.close(); currentES = null;
     });
 
@@ -390,6 +391,14 @@ if ('serviceWorker' in navigator) {
   }
 
   // Show pre-cached translation instantly (no loading)
+  function appendOrigLink(url) {
+    if (!url || tmBody.querySelector('.tm-orig-footer')) return;
+    const footer = document.createElement('div');
+    footer.className = 'tm-orig-footer';
+    footer.innerHTML = `原文链接：<a href="${url}" target="_blank" rel="noopener">${url}</a>`;
+    tmBody.appendChild(footer);
+  }
+
   function showInstant(data) {
     loading.classList.add('hidden');
     errBox.classList.add('hidden');
@@ -399,6 +408,7 @@ if ('serviceWorker' in navigator) {
     tmBody.innerHTML = '';
     const paras = (data.content || '').split(/\n\n+/).filter(Boolean);
     tmBody.innerHTML = paras.map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+    appendOrigLink(data.url || tmOrig.href);
   }
 
   // Attach click handlers after digest renders
