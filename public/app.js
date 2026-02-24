@@ -102,6 +102,7 @@ function renderDigest(digest) {
   document.getElementById('statFiltered').textContent = digest.filtered_articles||digest.filteredArticles||'-';
   document.getElementById('statSelected').textContent = digest.articles?.length||0;
   renderArticles();
+  document.dispatchEvent(new CustomEvent('digestRendered', { detail: { digest } }));
 }
 
 function renderArticles() {
@@ -187,12 +188,12 @@ document.getElementById('shareBtn').addEventListener('click', async () => {
       const url = data.url;
       if (navigator.clipboard) {
         await navigator.clipboard.writeText(url);
-        alert(`分享链接已复制！\n\n${url}\n\n对方无需登录即可查看`);
+        window.showToast?.('分享链接已复制', 'success', url);
       } else {
         prompt('分享链接（对方无需登录）：', url);
       }
-    } else { alert('生成分享链接失败'); }
-  } catch { alert('网络错误'); }
+    } else { window.showToast?.('生成分享链接失败', 'error'); }
+  } catch { window.showToast?.('网络错误', 'error'); }
 });
 
 // --- Share page detection ---
@@ -471,7 +472,7 @@ document.getElementById('settingsSave').addEventListener('click', async () => {
       statusEl.className = 'text-xs text-center text-red-500';
       statusEl.classList.remove('hidden');
     }
-  } catch { alert('网络错误'); }
+  } catch { window.showToast?.('网络错误', 'error'); }
 });
 
 // --- Generate Modal ---
@@ -501,7 +502,7 @@ document.getElementById('genConfirm').addEventListener('click', async () => {
     body: JSON.stringify({ hours, topN }),
   });
   const data = await res.json();
-  if (!data.ok) { alert(data.message || '生成失败'); return; }
+  if (!data.ok) { window.showToast?.(data.message || '生成失败', 'error'); return; }
   watchStatus();
 });
 
