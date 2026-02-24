@@ -214,7 +214,10 @@ if ('serviceWorker' in navigator) {
   const tmClose = document.getElementById('tmClose');
   const tmOrig  = document.getElementById('tmOrigLink');
   const tmFall  = document.getElementById('tmFallbackLink');
+  const tmStatus = document.getElementById('tmStatus');
   if (!modal) return;
+
+  let currentES = null; // active EventSource
 
   function openModal() {
     modal.classList.remove('hidden');
@@ -223,12 +226,14 @@ if ('serviceWorker' in navigator) {
   function closeModal() {
     modal.classList.add('hidden');
     document.body.style.overflow = '';
+    if (currentES) { currentES.close(); currentES = null; }
   }
-
-  function showLoading() {
+  function showLoading(msg) {
     loading.classList.remove('hidden');
     errBox.classList.add('hidden');
     content.classList.add('hidden');
+    const txt = document.getElementById('tmLoadingText');
+    if (txt) txt.textContent = msg || '正在抓取原文并翻译，请稍候…';
   }
   function showError(msg, url) {
     loading.classList.add('hidden');
@@ -237,32 +242,124 @@ if ('serviceWorker' in navigator) {
     errMsg.textContent = msg;
     tmFall.href = url;
   }
-  function showContent(data) {
+
+  // Append a paragraph chunk to body (streaming)
+  let pendingText = '';
+  let currentPara = null;
+  function appendChunk(text) {
     loading.classList.add('hidden');
-    errBox.classList.add('hidden');
     content.classList.remove('hidden');
-    tmTitle.textContent = data.titleZh || '';
-    tmSumm.textContent  = data.summary  || '';
-    // Render paragraphs
-    const paras = (data.content || '').split(/\n\n+/).filter(Boolean);
-    tmBody.innerHTML = paras.map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+    pendingText += text;
+    // Split on double newlines to create paragraphs
+    const parts = pendingText.split(/\n\n/);
+    pendingText = parts.pop(); // last part may be incomplete
+    for (const part of parts) {
+      if (part.trim()) {
+        const p = document.createElement('p');
+        p.innerHTML = part.replace(/\n/g, '<br>');
+        tmBody.appendChild(p);
+        currentPara = null;
+      }
+    }
+    // Stream remaining text into current paragraph
+    if (pendingText) {
+      if (!currentPara) {
+        currentPara = document.createElement('p');
+        currentPara.className = 'tm-streaming';
+        tmBody.appendChild(currentPara);
+      }
+      currentPara.innerHTML = pendingText.replace(/\n/g, '<br>');
+    }
+    // Auto-scroll modal
+    const box = modal.querySelector('.translate-modal-box');
+    if (box) box.scrollTop = box.scrollHeight;
+  }
+
+  function flushPending() {
+    if (pendingText.trim() && currentPara) {
+      currentPara.classList.remove('tm-streaming');
+      currentPara.innerHTML = pendingText.replace(/\n/g, '<br>');
+    }
+    pendingText = '';
+    currentPara = null;
+  }
+
+  function startStream(url, title, desc) {
+    pendingText = '';
+    currentPara = null;
+    tmBody.innerHTML = '';
+    tmTitle.textContent = '';
+    tmSumm.textContent = '';
+
+    const params = new URLSearchParams({
+      url:   url,
+      title: title.slice(0, 200),
+      desc:  desc.slice(0, 500),
+    });
+
+    const es = new EventSource(`/api/article/translate/stream?${params}`);
+    currentES = es;
+
+    es.addEventListener('status', (e) => {
+      const d = JSON.parse(e.data);
+      showLoading(d.msg);
+    });
+
+    es.addEventListener('meta', (e) => {
+      const d = JSON.parse(e.data);
+      loading.classList.add('hidden');
+      content.classList.remove('hidden');
+      tmTitle.textContent = d.titleZh || '';
+      tmSumm.textContent  = d.summary  || '';
+      // Show divider
+      const div = document.querySelector('.tm-divider');
+      if (div) div.style.display = '';
+    });
+
+    es.addEventListener('chunk', (e) => {
+      const d = JSON.parse(e.data);
+      appendChunk(d.text || '');
+    });
+
+    es.addEventListener('done', () => {
+      flushPending();
+      es.close(); currentES = null;
+    });
+
+    es.addEventListener('error', (e) => {
+      es.close(); currentES = null;
+      try {
+        const d = JSON.parse(e.data);
+        showError(d.error || '翻译失败', url);
+      } catch {
+        // SSE connection error (not our error event)
+        if (tmBody.children.length === 0) showError('连接中断，请重试', url);
+      }
+    });
+
+    es.onerror = () => {
+      if (es.readyState === EventSource.CLOSED) {
+        if (tmBody.children.length === 0 && content.classList.contains('hidden')) {
+          showError('连接失败，请检查网络', url);
+        }
+        currentES = null;
+      }
+    };
   }
 
   // Attach click handlers after digest renders
   function attachHandlers() {
-    // Target article title links and article cards
     document.querySelectorAll('.article-card a[href], .top-card a[href]').forEach(link => {
       if (link.dataset.translateBound) return;
       link.dataset.translateBound = '1';
 
-      link.addEventListener('click', async (e) => {
+      link.addEventListener('click', (e) => {
         const url   = link.href;
         const title = link.closest('[data-title]')?.dataset.title
                    || link.closest('.article-card, .top-card')?.querySelector('h3,h4')?.textContent
                    || link.textContent || '';
         const desc  = link.closest('.article-card, .top-card')?.querySelector('.article-desc, p')?.textContent || '';
 
-        // Only intercept external links
         if (!url || url.startsWith(location.origin)) return;
         e.preventDefault();
 
@@ -270,34 +367,13 @@ if ('serviceWorker' in navigator) {
         tmFall.href = url;
         openModal();
         showLoading();
-
-        try {
-          const params = new URLSearchParams({
-            url:   url,
-            title: title.slice(0, 200),
-            desc:  desc.slice(0, 500),
-          });
-          const res  = await fetch(`/api/article/translate?${params}`);
-          const data = await res.json();
-          if (data.ok) {
-            showContent(data);
-          } else {
-            showError(data.error || '翻译失败', url);
-          }
-        } catch (err) {
-          showError('网络错误，无法完成翻译', url);
-        }
+        startStream(url, title, desc);
       });
     });
   }
 
-  // Close handlers
   tmClose.addEventListener('click', closeModal);
   modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
-
-  // Attach after content renders
-  document.addEventListener('digestRendered', () => {
-    setTimeout(attachHandlers, 100);
-  });
+  document.addEventListener('digestRendered', () => setTimeout(attachHandlers, 100));
 })();

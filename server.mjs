@@ -10,6 +10,7 @@ import { saveDigest, saveArticles, getDigest, getDigestList, setDigestStatus, se
 import { authMiddleware, isPasswordSet, setPassword, verifyPassword, verifySession, getClientIp, isLocked, getRemainingLockTime } from './lib/auth.mjs';
 import { saveApiConfig, loadApiConfig, API_PRESETS } from './lib/config.mjs';
 import { translateArticle } from './lib/translate.mjs';
+import { translateArticleStream } from './lib/translate.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -303,26 +304,65 @@ app.get('/api/digests', (req, res) => res.json({ ok: true, data: getDigestList(3
 app.get('/api/stats', (req, res) => res.json({ ok: true, data: getStats() }));
 
 // ── Article translation ───────────────────────────────────────────
+function getApiOpts() {
+  const config = loadApiConfig();
+  const preset = config.preset === 'auto' ? undefined : config.preset;
+  return {
+    preset,
+    apiKey:  config.apiKey  || '',
+    baseURL: config.baseURL || '',
+    model:   config.model   || API_PRESETS[preset]?.defaultModel || '',
+  };
+}
+
+// Non-streaming fallback (kept for compatibility)
 app.get('/api/article/translate', asyncHandler(async (req, res) => {
   const { url, title = '', desc = '' } = req.query;
   if (!url) return res.status(400).json({ ok: false, error: 'url required' });
-
-  const config = loadApiConfig();
-  const preset = config.preset === 'auto' ? undefined : config.preset;
-  const apiKey = config.apiKey || '';
-  const baseURL = config.baseURL || '';
-  const model = config.model || API_PRESETS[preset]?.defaultModel || '';
-
-  if (!apiKey) return res.status(400).json({ ok: false, error: '请先在设置中配置 API Key' });
-
+  const opts = getApiOpts();
+  if (!opts.apiKey) return res.status(400).json({ ok: false, error: '请先在设置中配置 API Key' });
   const result = await translateArticle(
-    decodeURIComponent(url),
-    decodeURIComponent(title),
-    decodeURIComponent(desc),
-    { preset, apiKey, baseURL, model }
+    decodeURIComponent(url), decodeURIComponent(title), decodeURIComponent(desc), opts
   );
   res.json(result);
 }));
+
+// SSE streaming endpoint
+app.get('/api/article/translate/stream', async (req, res) => {
+  const { url, title = '', desc = '' } = req.query;
+  if (!url) { res.status(400).end(); return; }
+  const opts = getApiOpts();
+  if (!opts.apiKey) {
+    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });
+    res.write(`event:error\ndata:${JSON.stringify({ error: '请先在设置中配置 API Key' })}\n\n`);
+    res.end(); return;
+  }
+
+  res.writeHead(200, {
+    'Content-Type':  'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection':    'keep-alive',
+    'X-Accel-Buffering': 'no', // disable nginx buffering
+  });
+  res.flushHeaders?.();
+
+  // Heartbeat to keep connection alive
+  const hb = setInterval(() => res.write(': ping\n\n'), 15000);
+  req.on('close', () => clearInterval(hb));
+
+  try {
+    for await (const event of translateArticleStream(
+      decodeURIComponent(url), decodeURIComponent(title), decodeURIComponent(desc), opts
+    )) {
+      res.write(event);
+    }
+  } catch (e) {
+    res.write(`event:error\ndata:${JSON.stringify({ error: e.message })}\n\n`);
+  } finally {
+    clearInterval(hb);
+    res.end();
+  }
+});
 app.get('/api/status', (req, res) => res.json({ ok: true, data: generationState }));
 
 app.post('/api/digest/generate', asyncHandler(async (req, res) => {

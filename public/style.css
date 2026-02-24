@@ -1219,3 +1219,12 @@ body { letter-spacing: -0.01em; background: #ece5d5; }
   .tm-title { font-size: 18px; }
   .tm-body p { font-size: 14px; }
 }
+
+/* Streaming cursor effect */
+.tm-streaming::after {
+  content: '▋';
+  display: inline-block;
+  animation: tmBlink 0.7s step-end infinite;
+  color: #b8902c; margin-left: 2px;
+}
+@keyframes tmBlink { 0%,100%{opacity:1} 50%{opacity:0} }
