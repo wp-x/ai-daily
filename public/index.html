@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI 每日精选</title>
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1a1710">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AI精选">
+  <link rel="apple-touch-icon" href="/icon-192.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -11,10 +18,10 @@
       theme: {
         extend: {
           colors: {
-            sand: { 50:'#faf9f7', 100:'#f5f3ef', 200:'#ebe7e0', 300:'#d9d3c7', 400:'#b8ad9e', 500:'#97897a', 600:'#7a6e60' },
-            ink: { 50:'#f6f5f4', 100:'#e8e6e3', 200:'#d1cdc6', 700:'#3d3929', 800:'#2c2a22', 900:'#1a1916', 950:'#0d0d0b' },
-            warm: { 400:'#d4a574', 500:'#c4956a', 600:'#b38560' },
-          },
+            cream: { 50:'#faf7f0', 100:'#f3ede0', 200:'#e5dcc9', 300:'#d1c5ad', 400:'#b5a48a', 500:'#9a8870' },
+            ink:   { 700:'#2e2b1e', 800:'#211f15', 900:'#161410', 950:'#0d0c08' },
+            gold:  { 300:'#e0c070', 400:'#d4a850', 500:'#c09040', 600:'#a87830' },
+          }
         }
       }
     }
@@ -22,297 +29,359 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
 </head>
-<body class="bg-sand-50 text-ink-800 dark:bg-ink-950 dark:text-ink-100 min-h-screen antialiased transition-colors duration-300">
 
-  <!-- Login -->
-  <div id="loginScreen" class="hidden fixed inset-0 z-50 bg-sand-50 dark:bg-ink-950 flex items-center justify-center transition-colors">
-    <div class="w-full max-w-sm mx-4 px-2">
-      <div class="text-center mb-10">
-        <div class="w-12 h-12 mx-auto mb-6 rounded-full bg-warm-500/10 flex items-center justify-center">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="text-warm-500"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </div>
-        <h1 class="text-xl font-light tracking-wide">AI 每日精选</h1>
-        <p class="text-sm text-sand-500 dark:text-sand-400 mt-2">请输入访问密码</p>
-      </div>
-      <div class="space-y-4">
-        <input id="loginPassword" type="password" placeholder="密码" autocomplete="current-password"
-          class="w-full bg-white dark:bg-ink-900 border border-sand-200 dark:border-ink-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-warm-500/50 focus:ring-1 focus:ring-warm-500/20 transition">
-        <button id="loginBtn" class="w-full bg-ink-800 dark:bg-warm-500 hover:bg-ink-700 dark:hover:bg-warm-400 text-white dark:text-ink-950 font-medium text-sm py-3 rounded-xl transition">进入</button>
-        <p id="loginError" class="hidden text-center text-sm text-red-500"></p>
-      </div>
+<body class="bg-cream-100 text-ink-800 min-h-screen antialiased">
+
+<!-- Reading progress bar -->
+<div id="readingProgress"></div>
+
+<!-- Back to top -->
+<button id="backToTop" aria-label="回到顶部">
+  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
+  </svg>
+</button>
+
+<!-- Toast container -->
+<div id="toastContainer"></div>
+
+<!-- ══ LOGIN ══════════════════════════════════════════════════════ -->
+<div id="loginScreen" class="hidden fixed inset-0 z-50 bg-ink-900 flex items-center justify-center">
+  <div class="text-center px-8 w-full max-w-xs">
+    <div class="login-badge">DAILY INTELLIGENCE</div>
+    <h1 class="login-title">AI 精选</h1>
+    <p class="login-sub">全球 AI 行业精选</p>
+    <div class="space-y-3">
+      <input id="loginPassword" type="password" placeholder="访问密码"
+        class="login-input" autocomplete="current-password">
+      <button id="loginBtn" class="login-btn">进入</button>
+      <p id="loginError" class="hidden text-xs text-red-400 pt-1"></p>
     </div>
   </div>
+</div>
 
-  <!-- Main -->
-  <div id="mainApp" class="hidden">
-    <!-- Header: two rows on mobile -->
-    <header class="sticky top-0 z-40 bg-sand-50/90 dark:bg-ink-950/90 backdrop-blur-xl border-b border-sand-200 dark:border-ink-800 transition-colors">
-      <div class="max-w-4xl mx-auto px-4 sm:px-6">
-        <!-- Row 1: logo + action buttons -->
-        <div class="flex items-center justify-between py-3">
-          <div class="flex items-center gap-2">
-            <div class="w-7 h-7 rounded-full bg-warm-500/10 flex items-center justify-center shrink-0">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="text-warm-500"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
-            <span class="text-sm font-medium tracking-wide">AI 每日精选</span>
-          </div>
-          <div class="flex items-center gap-1 sm:gap-2">
-            <button id="shareBtn" class="p-2 rounded-lg hover:bg-sand-100 dark:hover:bg-ink-800 transition text-sand-500" title="分享">
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
-            </button>
-            <button id="themeToggle" class="p-2 rounded-lg hover:bg-sand-100 dark:hover:bg-ink-800 transition text-sand-500" title="切换主题">
-              <svg id="sunIcon" class="w-4 h-4 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-              <svg id="moonIcon" class="w-4 h-4 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-            </button>
-            <button id="settingsBtn" class="p-2 rounded-lg hover:bg-sand-100 dark:hover:bg-ink-800 transition text-sand-500" title="设置">
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
-            <button id="generateBtn" class="text-xs bg-ink-800 dark:bg-warm-500/20 hover:bg-ink-700 dark:hover:bg-warm-500/30 text-white dark:text-warm-400 px-3 sm:px-4 py-1.5 rounded-lg transition font-medium">生成</button>
-          </div>
-        </div>
-        <!-- Row 2: date selector (compact on mobile) -->
-        <div class="pb-3 -mt-1">
-          <select id="dateSelect" class="w-full text-xs bg-white dark:bg-ink-900 border border-sand-200 dark:border-ink-700 rounded-lg px-3 py-1.5 text-sand-600 dark:text-sand-400 cursor-pointer focus:outline-none"></select>
-        </div>
-      </div>
-    </header>
+<!-- ══ MAIN APP ═══════════════════════════════════════════════════ -->
+<div id="mainApp" class="hidden">
 
-    <main class="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <div id="statusBanner" class="hidden mb-6 p-3 sm:p-4 rounded-xl bg-warm-500/5 border border-warm-500/15">
-        <div class="flex items-center gap-3">
-          <div class="w-4 h-4 border-2 border-warm-500 border-t-transparent rounded-full animate-spin shrink-0"></div>
-          <span id="statusText" class="text-xs sm:text-sm text-warm-600 dark:text-warm-400"></span>
-        </div>
+  <!-- ────────────────────────────────────────────────────────────
+       DARK HERO HEADER
+  ──────────────────────────────────────────────────────────────── -->
+  <header class="site-hero">
+    <div class="hero-inner">
+
+      <div class="hero-badge-row">
+        <span class="hero-badge">DAILY INTELLIGENCE</span>
       </div>
 
-      <div id="emptyState" class="hidden text-center py-16 sm:py-24">
-        <div class="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-5 rounded-full bg-sand-100 dark:bg-ink-900 border border-sand-200 dark:border-ink-800 flex items-center justify-center"><span class="text-2xl opacity-50">📭</span></div>
-        <h2 class="text-base sm:text-lg font-light mb-2">还没有日报数据</h2>
-        <p class="text-xs sm:text-sm text-sand-500 px-4">先在设置中配置 API Key，然后点击「生成」</p>
+      <h1 class="hero-title">AI 精选</h1>
+      <p class="hero-tagline">全球 AI 行业精选</p>
+      <p class="hero-date" id="heroDate"></p>
+
+      <div class="hero-rule"></div>
+
+      <div class="hero-toolbar">
+        <div class="hero-icons">
+          <button id="shareBtn"    class="h-ico-btn" title="分享当日日报">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
+          </button>
+          <button id="themeToggle" class="h-ico-btn" title="切换主题">
+            <svg id="sunIcon"  class="hidden dark:block" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path stroke-linecap="round" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            <svg id="moonIcon" class="block dark:hidden"  width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+          </button>
+          <button id="settingsBtn" class="h-ico-btn" title="设置">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <button id="generateBtn" class="h-gen-btn">✦ 生成日报</button>
       </div>
 
-      <!-- Highlights -->
-      <section id="highlightsSection" class="hidden mb-8 sm:mb-10">
-        <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-ink-900 border border-sand-200 dark:border-ink-800 p-5 sm:p-8 shadow-sm transition-colors">
-          <div class="absolute top-0 right-0 w-48 sm:w-64 h-48 sm:h-64 bg-warm-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-          <div class="relative">
-            <div class="flex items-center gap-2 mb-3 sm:mb-4">
-              <span class="text-[10px] sm:text-xs font-medium text-warm-600 dark:text-warm-400 tracking-widest uppercase">今日看点</span>
-              <span class="text-[10px] sm:text-xs text-sand-400" id="digestDate"></span>
-            </div>
-            <p id="highlightsText" class="text-sm sm:text-base leading-relaxed font-light"></p>
-          </div>
-        </div>
-      </section>
-
-      <!-- Stats: 4 independent cards -->
-      <section id="statsSection" class="hidden mb-6 sm:mb-8">
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-          <div class="bg-white dark:bg-ink-900 border border-sand-200 dark:border-ink-800 rounded-xl p-4 sm:p-5 text-center shadow-sm hover:shadow-md transition-all">
-            <div class="text-2xl sm:text-3xl font-light text-warm-600 dark:text-warm-400 mb-1.5" id="statSources">-</div>
-            <div class="text-xs sm:text-sm text-sand-500 dark:text-sand-400 font-light tracking-wide">扫描源</div>
-          </div>
-          <div class="bg-white dark:bg-ink-900 border border-sand-200 dark:border-ink-800 rounded-xl p-4 sm:p-5 text-center shadow-sm hover:shadow-md transition-all">
-            <div class="text-2xl sm:text-3xl font-light text-ink-800 dark:text-ink-100 mb-1.5" id="statTotal">-</div>
-            <div class="text-xs sm:text-sm text-sand-500 dark:text-sand-400 font-light tracking-wide">抓取文章</div>
-          </div>
-          <div class="bg-white dark:bg-ink-900 border border-sand-200 dark:border-ink-800 rounded-xl p-4 sm:p-5 text-center shadow-sm hover:shadow-md transition-all">
-            <div class="text-2xl sm:text-3xl font-light text-ink-800 dark:text-ink-100 mb-1.5" id="statFiltered">-</div>
-            <div class="text-xs sm:text-sm text-sand-500 dark:text-sand-400 font-light tracking-wide">时间过滤</div>
-          </div>
-          <div class="bg-white dark:bg-ink-900 border border-sand-200 dark:border-ink-800 rounded-xl p-4 sm:p-5 text-center shadow-sm hover:shadow-md transition-all">
-            <div class="text-2xl sm:text-3xl font-light text-warm-600 dark:text-warm-400 mb-1.5" id="statSelected">-</div>
-            <div class="text-xs sm:text-sm text-sand-500 dark:text-sand-400 font-light tracking-wide">AI 精选</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Filters: wrap nicely on mobile -->
-      <section id="filterSection" class="hidden mb-6 sm:mb-8">
-        <div class="flex flex-col sm:flex-row gap-3">
-          <div class="flex flex-wrap gap-1.5 sm:gap-2">
-            <button class="cat-btn active" data-cat="all">全部</button>
-            <button class="cat-btn" data-cat="ai-ml">AI/ML</button>
-            <button class="cat-btn" data-cat="security">安全</button>
-            <button class="cat-btn" data-cat="engineering">工程</button>
-            <button class="cat-btn" data-cat="tools">工具</button>
-            <button class="cat-btn" data-cat="opinion">观点</button>
-            <button class="cat-btn" data-cat="other">其他</button>
-          </div>
-          <input id="searchInput" type="text" placeholder="搜索..." class="text-xs bg-white dark:bg-ink-900 border border-sand-200 dark:border-ink-700 rounded-lg px-3 py-1.5 w-full sm:w-40 focus:outline-none focus:border-warm-500/30 transition">
-        </div>
-      </section>
-
-      <!-- Top 3: single col on mobile -->
-      <section id="top3Section" class="hidden mb-8 sm:mb-10">
-        <span class="text-[10px] sm:text-xs font-medium text-warm-600 dark:text-warm-400 tracking-widest uppercase mb-4 sm:mb-5 block">今日必读</span>
-        <div id="top3Grid" class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3"></div>
-      </section>
-
-      <div id="divider" class="hidden border-t border-sand-200 dark:border-ink-800 mb-8 sm:mb-10"></div>
-
-      <section id="articleSection" class="hidden">
-        <span class="text-[10px] sm:text-xs font-medium text-sand-500 tracking-widest uppercase mb-4 sm:mb-5 block">全部精选</span>
-        <div id="articleList" class="space-y-2 sm:space-y-1"></div>
-      </section>
-    </main>
-
-    <footer class="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10 text-center">
-      <p class="text-xs text-sand-600 dark:text-sand-400">AI 每日精选 © 2026</p>
-    </footer>
-  </div>
-
-  <!-- Settings Modal -->
-  <div id="settingsModal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 dark:bg-black/60 backdrop-blur-sm">
-    <div class="bg-white dark:bg-ink-900 rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 w-full sm:max-w-lg sm:mx-4 border-t sm:border border-sand-200 dark:border-ink-800 shadow-2xl max-h-[85vh] overflow-y-auto transition-colors">
-      <div class="w-10 h-1 bg-sand-200 dark:bg-ink-700 rounded-full mx-auto mb-4 sm:hidden"></div>
-      <h3 class="text-base font-medium mb-5">⚙️ 设置</h3>
-
-      <!-- Tabs -->
-      <div class="flex gap-2 mb-5 border-b border-sand-200 dark:border-ink-800">
-        <button id="tabApi" class="settings-tab active" data-tab="api">API 配置</button>
-        <button id="tabRss" class="settings-tab" data-tab="rss">RSS 源</button>
+      <div class="hero-date-sel-wrap">
+        <select id="dateSelect" class="hero-date-sel"></select>
       </div>
 
-      <!-- API Tab -->
-      <div id="apiTab" class="settings-tab-content">
-        <div class="space-y-5">
-        <div>
-          <label class="block text-xs text-sand-500 mb-1.5 font-medium">API 渠道</label>
-          <div id="presetBtns" class="grid grid-cols-2 gap-2">
-            <button class="preset-btn" data-preset="gemini">
-              <span class="text-xs sm:text-sm font-medium">Google Gemini</span>
-              <span class="text-[9px] sm:text-[10px] text-sand-400">gemini-2.0-flash</span>
-            </button>
-            <button class="preset-btn" data-preset="doubao">
-              <span class="text-xs sm:text-sm font-medium">豆包 Doubao</span>
-              <span class="text-[9px] sm:text-[10px] text-sand-400">doubao-seed-1-6</span>
-            </button>
-            <button class="preset-btn" data-preset="custom">
-              <span class="text-xs sm:text-sm font-medium">自定义</span>
-              <span class="text-[9px] sm:text-[10px] text-sand-400">OpenAI 兼容</span>
-            </button>
+    </div>
+  </header>
+
+  <!-- ─────────────────────��──────────────────────────────────────
+       CONTENT AREA
+  ──────────────────────────────────────────────────────────────── -->
+  <main class="page-body">
+
+    <!-- Skeleton loading view -->
+    <div id="skeletonView" class="hidden flex flex-col">
+      <!-- skel panel 1 -->
+      <div class="skel-section">
+        <div class="panel">
+          <div class="panel-header"><div class="skel-line w-6 h-3 rounded"></div><div class="skel-line w-24 h-3 rounded ml-2"></div></div>
+          <div class="p-7 bg-[#1e1b12]">
+            <div class="skel-line-dark w-36 h-2 rounded mb-5"></div>
+            <div class="space-y-3"><div class="skel-line-dark w-full h-3 rounded"></div><div class="skel-line-dark w-full h-3 rounded"></div><div class="skel-line-dark w-4/5 h-3 rounded"></div><div class="skel-line-dark w-3/4 h-3 rounded"></div></div>
           </div>
         </div>
-
-        <!-- API Key + Test -->
-        <div>
-          <label class="block text-xs text-sand-500 mb-1.5 font-medium">API Key</label>
-          <div class="flex gap-2">
-            <input id="cfgApiKey" type="password" placeholder="输入 API Key"
-              class="flex-1 text-sm bg-sand-50 dark:bg-ink-950 border border-sand-200 dark:border-ink-700 rounded-xl px-4 py-2.5 focus:outline-none focus:border-warm-500/30 transition">
-            <button id="testApiBtn" class="test-btn shrink-0">测试连接</button>
-          </div>
-          <p id="cfgApiKeyHint" class="text-[10px] text-sand-400 mt-1"></p>
-          <p id="testResult" class="hidden text-[10px] mt-1"></p>
-        </div>
-
-        <div id="customFields" class="hidden space-y-3">
-          <div>
-            <label class="block text-xs text-sand-500 mb-1.5 font-medium">Base URL</label>
-            <input id="cfgBaseURL" type="text" placeholder="https://api.openai.com/v1"
-              class="w-full text-sm bg-sand-50 dark:bg-ink-950 border border-sand-200 dark:border-ink-700 rounded-xl px-4 py-2.5 focus:outline-none focus:border-warm-500/30 transition">
-          </div>
-          <div>
-            <label class="block text-xs text-sand-500 mb-1.5 font-medium">模型名称</label>
-            <input id="cfgModel" type="text" placeholder="gpt-4o-mini"
-              class="w-full text-sm bg-sand-50 dark:bg-ink-950 border border-sand-200 dark:border-ink-700 rounded-xl px-4 py-2.5 focus:outline-none focus:border-warm-500/30 transition">
-          </div>
-        </div>
-
-        <div class="border-t border-sand-200 dark:border-ink-800 pt-5">
-          <div class="flex items-center justify-between mb-3">
-            <label class="text-xs text-sand-500 font-medium">每日自动生成</label>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input id="cfgScheduleEnabled" type="checkbox" class="sr-only peer">
-              <div class="w-9 h-5 bg-sand-200 dark:bg-ink-700 peer-checked:bg-warm-500 rounded-full transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
-            </label>
-          </div>
-          <div id="scheduleFields" class="hidden space-y-3">
-            <div class="grid grid-cols-3 gap-2 sm:gap-3">
-              <div>
-                <label class="block text-[10px] text-sand-400 mb-1">每天几点</label>
-                <input id="cfgScheduleHour" type="number" min="0" max="23" value="8" class="w-full text-sm bg-sand-50 dark:bg-ink-950 border border-sand-200 dark:border-ink-700 rounded-lg px-2 sm:px-3 py-2 focus:outline-none">
-              </div>
-              <div>
-                <label class="block text-[10px] text-sand-400 mb-1">时间范围</label>
-                <select id="cfgScheduleHours" class="w-full text-sm bg-sand-50 dark:bg-ink-950 border border-sand-200 dark:border-ink-700 rounded-lg px-2 sm:px-3 py-2 focus:outline-none">
-                  <option value="24">24h</option><option value="48" selected>48h</option><option value="72">72h</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-[10px] text-sand-400 mb-1">精选数量</label>
-                <select id="cfgScheduleTopN" class="w-full text-sm bg-sand-50 dark:bg-ink-950 border border-sand-200 dark:border-ink-700 rounded-lg px-2 sm:px-3 py-2 focus:outline-none">
-                  <option value="10">10</option><option value="15" selected>15</option><option value="20">20</option>
-                </select>
-              </div>
-            </div>
-            <p class="text-[10px] text-sand-400">定时任务将使用当前选择的 API 渠道和 Key</p>
-          </div>
-        </div>
-
-        <p id="cfgStatus" class="hidden text-xs text-center"></p>
       </div>
-
-      <div class="flex gap-3 mt-6">
-        <button id="settingsCancel" class="flex-1 text-sm py-2.5 rounded-xl border border-sand-200 dark:border-ink-700 text-sand-500 hover:bg-sand-50 dark:hover:bg-ink-800 transition">取消</button>
-        <button id="settingsSave" class="flex-1 text-sm py-2.5 rounded-xl bg-ink-800 dark:bg-warm-500 text-white dark:text-ink-950 font-medium hover:bg-ink-700 dark:hover:bg-warm-400 transition">保存配置</button>
-      </div>
-      </div>
-
-      <!-- RSS Tab -->
-      <div id="rssTab" class="settings-tab-content hidden">
-        <div class="space-y-4">
-          <p class="text-xs text-sand-500">管理 RSS 订阅源。默认使用 90 个精选源，你可以添加自定义源或禁用失效的源。</p>
-          
-          <div class="flex gap-2">
-            <input id="rssName" type="text" placeholder="源名称" class="flex-1 text-sm bg-sand-50 dark:bg-ink-950 border border-sand-200 dark:border-ink-700 rounded-lg px-3 py-2 focus:outline-none">
-            <input id="rssUrl" type="text" placeholder="RSS URL" class="flex-1 text-sm bg-sand-50 dark:bg-ink-950 border border-sand-200 dark:border-ink-700 rounded-lg px-3 py-2 focus:outline-none">
-            <button id="testRssBtn" class="test-btn shrink-0">测试</button>
-            <button id="addRssBtn" class="text-xs px-3 py-2 rounded-lg bg-warm-500/20 text-warm-600 dark:text-warm-400 hover:bg-warm-500/30 transition">添加</button>
+      <!-- skel panel 2 -->
+      <div class="skel-section">
+        <div class="panel">
+          <div class="panel-header"><div class="skel-line w-6 h-3 rounded"></div><div class="skel-line w-20 h-3 rounded ml-2"></div></div>
+          <div class="p-4 grid grid-cols-4 gap-2">
+            <div class="skel-line h-16 rounded-xl"></div><div class="skel-line h-16 rounded-xl"></div><div class="skel-line h-16 rounded-xl"></div><div class="skel-line h-16 rounded-xl"></div>
           </div>
-          
-          <p id="rssTestResult" class="hidden text-[10px]"></p>
-          
-          <div class="max-h-64 overflow-y-auto border border-sand-200 dark:border-ink-800 rounded-xl">
-            <div id="rssList" class="divide-y divide-sand-200 dark:divide-ink-800"></div>
+        </div>
+      </div>
+      <!-- skel panel 3 -->
+      <div class="skel-section">
+        <div class="panel">
+          <div class="panel-header"><div class="skel-line w-6 h-3 rounded"></div><div class="skel-line w-20 h-3 rounded ml-2"></div></div>
+          <div class="grid grid-cols-3 divide-x divide-[#ede4d0]">
+            <div class="p-5 space-y-3"><div class="skel-line h-3 w-3/4 rounded"></div><div class="skel-line h-3 w-full rounded"></div><div class="skel-line h-3 w-2/3 rounded"></div></div>
+            <div class="p-5 space-y-3"><div class="skel-line h-3 w-3/4 rounded"></div><div class="skel-line h-3 w-full rounded"></div><div class="skel-line h-3 w-2/3 rounded"></div></div>
+            <div class="p-5 space-y-3"><div class="skel-line h-3 w-3/4 rounded"></div><div class="skel-line h-3 w-full rounded"></div><div class="skel-line h-3 w-2/3 rounded"></div></div>
           </div>
-          
-          <button id="resetRssBtn" class="w-full text-xs py-2 rounded-lg border border-sand-300 dark:border-ink-700 text-sand-500 hover:bg-sand-50 dark:hover:bg-ink-800 transition">恢复默认源</button>
+        </div>
+      </div>
+      <!-- skel panel 4 -->
+      <div class="skel-section">
+        <div class="panel">
+          <div class="panel-header"><div class="skel-line w-6 h-3 rounded"></div><div class="skel-line w-20 h-3 rounded ml-2"></div></div>
+          <div class="divide-y divide-[#ede4d0]">
+            <div class="p-5 space-y-2"><div class="skel-line h-3 w-1/4 rounded"></div><div class="skel-line h-4 w-3/4 rounded mt-2"></div><div class="skel-line h-3 w-full rounded"></div><div class="skel-line h-3 w-5/6 rounded"></div></div>
+            <div class="p-5 space-y-2"><div class="skel-line h-3 w-1/4 rounded"></div><div class="skel-line h-4 w-2/3 rounded mt-2"></div><div class="skel-line h-3 w-full rounded"></div><div class="skel-line h-3 w-4/5 rounded"></div></div>
+            <div class="p-5 space-y-2"><div class="skel-line h-3 w-1/4 rounded"></div><div class="skel-line h-4 w-3/4 rounded mt-2"></div><div class="skel-line h-3 w-full rounded"></div><div class="skel-line h-3 w-3/4 rounded"></div></div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Generate Modal -->
-  <div id="generateModal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 dark:bg-black/60 backdrop-blur-sm">
-    <div class="bg-white dark:bg-ink-900 rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 w-full sm:max-w-md sm:mx-4 border-t sm:border border-sand-200 dark:border-ink-800 shadow-2xl transition-colors">
-      <div class="w-10 h-1 bg-sand-200 dark:bg-ink-700 rounded-full mx-auto mb-4 sm:hidden"></div>
-      <h3 class="text-base font-medium mb-5">生成日报</h3>
-      <div class="space-y-4">
-        <p id="genConfigInfo" class="text-xs sm:text-sm text-sand-500"></p>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs text-sand-500 mb-1.5">时间范围</label>
-            <select id="genHours" class="w-full text-sm bg-sand-50 dark:bg-ink-950 border border-sand-200 dark:border-ink-700 rounded-xl px-3 py-2.5 focus:outline-none">
-              <option value="24">24 小时</option><option value="48" selected>48 小时</option><option value="72">72 小时</option><option value="168">7 天</option>
-            </select>
+    <!-- Status banner -->
+    <div id="statusBanner" class="hidden mb-4">
+      <div class="status-card">
+        <div class="status-spinner"></div>
+        <span id="statusText" class="text-xs text-gold-500"></span>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div id="emptyState" class="hidden">
+      <div class="panel text-center py-20">
+        <div class="empty-diamond">◇</div>
+        <p class="text-sm font-light text-cream-400 mt-4 mb-1">尚无日报内容</p>
+        <p class="text-xs text-cream-300">在设置中配置 API Key，然后点击「生成日报」</p>
+      </div>
+    </div>
+
+    <!-- ── PANEL 1 : 今日日报 ─────────────────────────────────── -->
+    <section id="highlightsSection" class="hidden">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-num">01</span>
+          <span class="panel-title">今日日报</span>
+        </div>
+
+        <!-- Dark featured block -->
+        <div class="feat-card">
+          <div class="feat-label">
+            ENHANCED EDITION<span class="feat-dot">·</span>增强版
           </div>
-          <div>
-            <label class="block text-xs text-sand-500 mb-1.5">精选数量</label>
-            <select id="genTopN" class="w-full text-sm bg-sand-50 dark:bg-ink-950 border border-sand-200 dark:border-ink-700 rounded-xl px-3 py-2.5 focus:outline-none">
-              <option value="10">10 篇</option><option value="15" selected>15 篇</option><option value="20">20 篇</option>
-            </select>
+          <p id="highlightsText" class="feat-body"></p>
+          <div id="statsSection" class="hidden feat-stats">
+            <div class="fstat"><div class="fstat-sq"></div><span id="statSources" class="fstat-n">—</span><span class="fstat-l">条来源</span></div>
+            <div class="fstat"><div class="fstat-sq"></div><span id="statTotal"   class="fstat-n">—</span><span class="fstat-l">篇抓取</span></div>
+            <div class="fstat"><div class="fstat-sq"></div><span id="statFiltered" class="fstat-n">—</span><span class="fstat-l">篇过滤</span></div>
+            <div class="fstat gold"><div class="fstat-sq-g"></div><span id="statSelected" class="fstat-n">—</span><span class="fstat-l">篇精选</span></div>
+          </div>
+          <div class="feat-foot">
+            <span id="digestDate" class="feat-date"></span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── PANEL 2 : 内容分类 ─────────────────────────────────── -->
+    <section id="filterSection" class="hidden">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-num">02</span>
+          <span class="panel-title">内容分类</span>
+        </div>
+
+        <div class="cat-grid">
+          <button class="cat-btn active" data-cat="all">
+            <span class="cat-ic">◈</span><span class="cat-nm">全部</span>
+          </button>
+          <button class="cat-btn" data-cat="ai-ml">
+            <span class="cat-ic">⬡</span><span class="cat-nm">AI / ML</span>
+          </button>
+          <button class="cat-btn" data-cat="security">
+            <span class="cat-ic">◉</span><span class="cat-nm">安全</span>
+          </button>
+          <button class="cat-btn" data-cat="engineering">
+            <span class="cat-ic">◫</span><span class="cat-nm">工程</span>
+          </button>
+          <button class="cat-btn" data-cat="tools">
+            <span class="cat-ic">◧</span><span class="cat-nm">工具</span>
+          </button>
+          <button class="cat-btn" data-cat="opinion">
+            <span class="cat-ic">◈</span><span class="cat-nm">观点</span>
+          </button>
+          <button class="cat-btn" data-cat="other">
+            <span class="cat-ic">◌</span><span class="cat-nm">其他</span>
+          </button>
+        </div>
+
+        <div class="panel-search">
+          <svg class="search-ico" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/></svg>
+          <input id="searchInput" type="text" placeholder="搜索文章、关键词、来源…" class="search-input">
+        </div>
+      </div>
+    </section>
+
+    <!-- ── PANEL 3 : 今日必读 ─────────────────────────────────── -->
+    <section id="top3Section" class="hidden">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-num">03</span>
+          <span class="panel-title">今日必读</span>
+          <span class="panel-header-badge">TOP 3</span>
+        </div>
+        <div id="top3Grid" class="top3-grid"></div>
+      </div>
+    </section>
+
+    <!-- divider -->
+    <div id="divider" class="hidden panel-divider"></div>
+
+    <!-- ── PANEL 4 : 全部精选 ─────────────────────────────────── -->
+    <section id="articleSection" class="hidden">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-num">04</span>
+          <span class="panel-title">全部精选</span>
+        </div>
+        <div id="articleList" class="space-y-3"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- DARK FOOTER ──────────────────────────────────────────────── -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-rule"></div>
+      <div class="footer-gem">✦</div>
+      <h2 class="footer-title">AI 精选</h2>
+      <p class="footer-sub">全球 AI 行业精选</p>
+      <p class="footer-meta">每日自动更新 · 增强版深度内容</p>
+      <div class="footer-nav">
+        <span>行业新闻</span><span class="footer-dot">·</span>
+        <span>AI / ML</span><span class="footer-dot">·</span>
+        <span>工具推荐</span><span class="footer-dot">·</span>
+        <span>观点分析</span>
+      </div>
+    </div>
+  </footer>
+
+</div><!-- /mainApp -->
+
+<!-- ══ SETTINGS MODAL ═══════════════════════════════════════════ -->
+<div id="settingsModal" class="modal-bg hidden">
+  <div class="modal-box">
+    <div class="drag-pill sm:hidden"></div>
+    <h3 class="modal-heading">⚙ &nbsp;设置</h3>
+
+    <div class="flex border-b border-cream-200 mb-5">
+      <button id="tabApi" class="settings-tab active" data-tab="api">API 配置</button>
+      <button id="tabRss" class="settings-tab"        data-tab="rss">RSS 源</button>
+    </div>
+
+    <div id="apiTab" class="settings-tab-content space-y-5">
+      <div>
+        <label class="s-lbl">API 渠道</label>
+        <div id="presetBtns" class="grid grid-cols-3 gap-2">
+          <button class="preset-btn" data-preset="gemini"><span class="text-xs font-medium">Google Gemini</span><span class="text-[9px] text-cream-400 mt-0.5">gemini-2.0-flash</span></button>
+          <button class="preset-btn" data-preset="doubao"><span class="text-xs font-medium">豆包 Doubao</span><span class="text-[9px] text-cream-400 mt-0.5">doubao-seed</span></button>
+          <button class="preset-btn" data-preset="custom"><span class="text-xs font-medium">自定义</span><span class="text-[9px] text-cream-400 mt-0.5">OpenAI 兼容</span></button>
+        </div>
+      </div>
+      <div>
+        <label class="s-lbl">API Key</label>
+        <div class="flex gap-2">
+          <input id="cfgApiKey" type="password" placeholder="输入 API Key" class="s-inp flex-1">
+          <button id="testApiBtn" class="test-btn shrink-0">测试</button>
+        </div>
+        <p id="cfgApiKeyHint" class="text-[10px] text-cream-400 mt-1.5"></p>
+        <p id="testResult" class="hidden text-[10px] mt-1.5"></p>
+      </div>
+      <div id="customFields" class="hidden space-y-3">
+        <div><label class="s-lbl">Base URL</label><input id="cfgBaseURL" type="text" placeholder="https://api.openai.com/v1" class="s-inp"></div>
+        <div><label class="s-lbl">模型</label><input id="cfgModel" type="text" placeholder="gpt-4o-mini" class="s-inp"></div>
+      </div>
+      <div class="border-t border-cream-200 pt-5">
+        <div class="flex items-center justify-between mb-3">
+          <label class="text-xs font-medium">每日自动生成</label>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input id="cfgScheduleEnabled" type="checkbox" class="sr-only peer">
+            <div class="w-[34px] h-[18px] bg-cream-300 peer-checked:bg-gold-500 rounded-full transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-[14px] after:w-[14px] after:transition-all peer-checked:after:translate-x-[14px]"></div>
+          </label>
+        </div>
+        <div id="scheduleFields" class="hidden space-y-3">
+          <div class="grid grid-cols-3 gap-2">
+            <div><label class="text-[10px] text-cream-400 block mb-1">几点生成</label><input id="cfgScheduleHour" type="number" min="0" max="23" value="8" class="s-inp text-center"></div>
+            <div><label class="text-[10px] text-cream-400 block mb-1">时间范围</label><select id="cfgScheduleHours" class="s-inp"><option value="24">24h</option><option value="48" selected>48h</option><option value="72">72h</option></select></div>
+            <div><label class="text-[10px] text-cream-400 block mb-1">精选数量</label><select id="cfgScheduleTopN" class="s-inp"><option value="10">10</option><option value="15" selected>15</option><option value="20">20</option></select></div>
           </div>
         </div>
       </div>
-      <div class="flex gap-3 mt-6">
-        <button id="genCancel" class="flex-1 text-sm py-2.5 rounded-xl border border-sand-200 dark:border-ink-700 text-sand-500 hover:bg-sand-50 dark:hover:bg-ink-800 transition">取消</button>
-        <button id="genConfirm" class="flex-1 text-sm py-2.5 rounded-xl bg-ink-800 dark:bg-warm-500 text-white dark:text-ink-950 font-medium hover:bg-ink-700 dark:hover:bg-warm-400 transition">开始生成</button>
+      <p id="cfgStatus" class="hidden text-xs text-center pt-1"></p>
+    </div>
+
+    <div id="rssTab" class="settings-tab-content hidden space-y-4">
+      <p class="text-xs text-cream-500 leading-relaxed">管理 RSS 订阅源。默认使用 90 个精选源，可添加自定义源。</p>
+      <div class="flex gap-2">
+        <input id="rssName" type="text" placeholder="源名称" class="s-inp flex-1 min-w-0">
+        <input id="rssUrl"  type="text" placeholder="RSS URL"  class="s-inp flex-1 min-w-0">
+        <button id="testRssBtn" class="test-btn shrink-0">测试</button>
+        <button id="addRssBtn" class="text-xs px-3 py-2 rounded-lg bg-gold-500/10 text-gold-600 hover:bg-gold-500/20 transition shrink-0">添加</button>
       </div>
+      <p id="rssTestResult" class="hidden text-[10px]"></p>
+      <div class="border border-cream-200 rounded-xl overflow-hidden max-h-52 overflow-y-auto">
+        <div id="rssList" class="divide-y divide-cream-100"></div>
+      </div>
+      <button id="resetRssBtn" class="w-full text-xs py-2 rounded-lg border border-cream-200 text-cream-400 hover:bg-cream-50 transition">恢复默认源</button>
+    </div>
+
+    <div class="flex gap-2 mt-6 pt-5 border-t border-cream-100">
+      <button id="settingsCancel" class="m-btn-sec">取消</button>
+      <button id="settingsSave"   class="m-btn-pri">保存配置</button>
     </div>
   </div>
+</div>
 
-  <script src="/app.js"></script>
+<!-- ══ GENERATE MODAL ════════════════════════════════════════════ -->
+<div id="generateModal" class="modal-bg hidden">
+  <div class="modal-box">
+    <div class="drag-pill sm:hidden"></div>
+    <h3 class="modal-heading">✦ &nbsp;生成日报</h3>
+    <p id="genConfigInfo" class="text-xs text-cream-400 mb-5 leading-relaxed"></p>
+    <div class="grid grid-cols-2 gap-3 mb-6">
+      <div><label class="s-lbl">时间范围</label><select id="genHours" class="s-inp"><option value="24">24 小时</option><option value="48" selected>48 小时</option><option value="72">72 小时</option><option value="168">7 天</option></select></div>
+      <div><label class="s-lbl">精选数量</label><select id="genTopN" class="s-inp"><option value="10">10 篇</option><option value="15" selected>15 篇</option><option value="20">20 篇</option></select></div>
+    </div>
+    <div class="flex gap-2">
+      <button id="genCancel"  class="m-btn-sec">取消</button>
+      <button id="genConfirm" class="m-btn-pri">开始生成</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const d=new Date(), days=['日','一','二','三','四','五','六'];
+  const el=document.getElementById('heroDate');
+  if(el) el.textContent=`${d.getFullYear()}年${String(d.getMonth()+1).padStart(2,'0')}月${String(d.getDate()).padStart(2,'0')}日 · 星期${days[d.getDay()]}`;
+})();
+</script>
+<script src="/enhancements.js"></script>
+<script src="/app.js"></script>
 </body>
 </html>
