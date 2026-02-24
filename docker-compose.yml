@@ -4,7 +4,7 @@ services:
     container_name: ai-daily-web
     restart: unless-stopped
     ports:
-      - "3456:3456"
+      - "127.0.0.1:3456:3456"
     environment:
       - SITE_PASSWORD=${SITE_PASSWORD:-}
       - CONFIG_SECRET=${CONFIG_SECRET:-}
