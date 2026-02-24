@@ -45,6 +45,37 @@
 <!-- Toast container -->
 <div id="toastContainer"></div>
 
+<!-- ══ TRANSLATION MODAL ══════════════════════════════════════════ -->
+<div id="translateModal" class="hidden fixed inset-0 z-50 flex items-start justify-center" style="background:rgba(20,18,12,0.72);backdrop-filter:blur(4px);overflow-y:auto;padding:32px 16px 48px;">
+  <div class="translate-modal-box">
+    <!-- Header -->
+    <div class="tm-header">
+      <div class="tm-meta">
+        <span class="tm-badge">中文译文</span>
+        <a id="tmOrigLink" href="#" target="_blank" rel="noopener" class="tm-orig-link">查看原文 ↗</a>
+      </div>
+      <button id="tmClose" class="tm-close" aria-label="关闭">✕</button>
+    </div>
+    <!-- Loading state -->
+    <div id="tmLoading" class="tm-loading">
+      <div class="tm-spinner"></div>
+      <p class="tm-loading-text">正在抓取原文并翻译，请稍候…</p>
+    </div>
+    <!-- Error state -->
+    <div id="tmError" class="hidden tm-error">
+      <p id="tmErrorMsg"></p>
+      <a id="tmFallbackLink" href="#" target="_blank" rel="noopener" class="tm-fallback-btn">前往原文阅读 ↗</a>
+    </div>
+    <!-- Content -->
+    <div id="tmContent" class="hidden">
+      <h1 id="tmTitle" class="tm-title"></h1>
+      <p id="tmSummary" class="tm-summary"></p>
+      <div class="tm-divider"></div>
+      <div id="tmBody" class="tm-body"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ LOGIN ══════════════════════════════════════════════════════ -->
 <div id="loginScreen" class="hidden fixed inset-0 z-50 bg-ink-900 flex items-center justify-center">
   <div class="text-center px-8 w-full max-w-xs">

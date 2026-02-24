@@ -198,3 +198,106 @@ if ('serviceWorker' in navigator) {
     setTimeout(() => { document.documentElement.style.transition = ''; }, 300);
   });
 })();
+
+/* ══════════════════════════════════════════════════════════════
+   ARTICLE TRANSLATION MODAL
+   ══════════════════════════════════════════════════════════════ */
+(function initTranslation() {
+  const modal   = document.getElementById('translateModal');
+  const loading = document.getElementById('tmLoading');
+  const errBox  = document.getElementById('tmError');
+  const errMsg  = document.getElementById('tmErrorMsg');
+  const content = document.getElementById('tmContent');
+  const tmTitle = document.getElementById('tmTitle');
+  const tmSumm  = document.getElementById('tmSummary');
+  const tmBody  = document.getElementById('tmBody');
+  const tmClose = document.getElementById('tmClose');
+  const tmOrig  = document.getElementById('tmOrigLink');
+  const tmFall  = document.getElementById('tmFallbackLink');
+  if (!modal) return;
+
+  function openModal() {
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal() {
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  function showLoading() {
+    loading.classList.remove('hidden');
+    errBox.classList.add('hidden');
+    content.classList.add('hidden');
+  }
+  function showError(msg, url) {
+    loading.classList.add('hidden');
+    errBox.classList.remove('hidden');
+    content.classList.add('hidden');
+    errMsg.textContent = msg;
+    tmFall.href = url;
+  }
+  function showContent(data) {
+    loading.classList.add('hidden');
+    errBox.classList.add('hidden');
+    content.classList.remove('hidden');
+    tmTitle.textContent = data.titleZh || '';
+    tmSumm.textContent  = data.summary  || '';
+    // Render paragraphs
+    const paras = (data.content || '').split(/\n\n+/).filter(Boolean);
+    tmBody.innerHTML = paras.map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+  }
+
+  // Attach click handlers after digest renders
+  function attachHandlers() {
+    // Target article title links and article cards
+    document.querySelectorAll('.article-card a[href], .top-card a[href]').forEach(link => {
+      if (link.dataset.translateBound) return;
+      link.dataset.translateBound = '1';
+
+      link.addEventListener('click', async (e) => {
+        const url   = link.href;
+        const title = link.closest('[data-title]')?.dataset.title
+                   || link.closest('.article-card, .top-card')?.querySelector('h3,h4')?.textContent
+                   || link.textContent || '';
+        const desc  = link.closest('.article-card, .top-card')?.querySelector('.article-desc, p')?.textContent || '';
+
+        // Only intercept external links
+        if (!url || url.startsWith(location.origin)) return;
+        e.preventDefault();
+
+        tmOrig.href = url;
+        tmFall.href = url;
+        openModal();
+        showLoading();
+
+        try {
+          const params = new URLSearchParams({
+            url:   url,
+            title: title.slice(0, 200),
+            desc:  desc.slice(0, 500),
+          });
+          const res  = await fetch(`/api/article/translate?${params}`);
+          const data = await res.json();
+          if (data.ok) {
+            showContent(data);
+          } else {
+            showError(data.error || '翻译失败', url);
+          }
+        } catch (err) {
+          showError('网络错误，无法完成翻译', url);
+        }
+      });
+    });
+  }
+
+  // Close handlers
+  tmClose.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+  // Attach after content renders
+  document.addEventListener('digestRendered', () => {
+    setTimeout(attachHandlers, 100);
+  });
+})();

@@ -9,6 +9,7 @@ import { generateHighlights } from './lib/highlights.mjs';
 import { saveDigest, saveArticles, getDigest, getDigestList, setDigestStatus, setDigestHighlights, getStats, createShareToken, getDigestByShareToken, saveRssSources, getRssSources } from './lib/db.mjs';
 import { authMiddleware, isPasswordSet, setPassword, verifyPassword, verifySession, getClientIp, isLocked, getRemainingLockTime } from './lib/auth.mjs';
 import { saveApiConfig, loadApiConfig, API_PRESETS } from './lib/config.mjs';
+import { translateArticle } from './lib/translate.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -300,6 +301,28 @@ app.get('/api/digest/:date', (req, res) => {
 });
 app.get('/api/digests', (req, res) => res.json({ ok: true, data: getDigestList(30) }));
 app.get('/api/stats', (req, res) => res.json({ ok: true, data: getStats() }));
+
+// ── Article translation ───────────────────────────────────────────
+app.get('/api/article/translate', asyncHandler(async (req, res) => {
+  const { url, title = '', desc = '' } = req.query;
+  if (!url) return res.status(400).json({ ok: false, error: 'url required' });
+
+  const config = loadApiConfig();
+  const preset = config.preset === 'auto' ? undefined : config.preset;
+  const apiKey = config.apiKey || '';
+  const baseURL = config.baseURL || '';
+  const model = config.model || API_PRESETS[preset]?.defaultModel || '';
+
+  if (!apiKey) return res.status(400).json({ ok: false, error: '请先在设置中配置 API Key' });
+
+  const result = await translateArticle(
+    decodeURIComponent(url),
+    decodeURIComponent(title),
+    decodeURIComponent(desc),
+    { preset, apiKey, baseURL, model }
+  );
+  res.json(result);
+}));
 app.get('/api/status', (req, res) => res.json({ ok: true, data: generationState }));
 
 app.post('/api/digest/generate', asyncHandler(async (req, res) => {
