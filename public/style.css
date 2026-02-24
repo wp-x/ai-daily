@@ -1228,3 +1228,14 @@ body { letter-spacing: -0.01em; background: #ece5d5; }
   color: #b8902c; margin-left: 2px;
 }
 @keyframes tmBlink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* Pre-translated badge */
+.tm-ready-badge {
+  display: inline-block;
+  font-size: 9px; letter-spacing: 0.12em;
+  color: #5a9a6a; border: 1px solid rgba(90,154,106,0.4);
+  background: rgba(90,154,106,0.07);
+  padding: 2px 7px; border-radius: 2px;
+  margin-left: 8px; vertical-align: middle;
+  position: relative; top: -1px;
+}

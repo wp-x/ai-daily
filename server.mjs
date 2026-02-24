@@ -6,7 +6,7 @@ import { fetchAllFeeds } from './lib/feeds.mjs';
 import { scoreArticles } from './lib/scoring.mjs';
 import { summarizeArticles } from './lib/summarize.mjs';
 import { generateHighlights } from './lib/highlights.mjs';
-import { saveDigest, saveArticles, getDigest, getDigestList, setDigestStatus, setDigestHighlights, getStats, createShareToken, getDigestByShareToken, saveRssSources, getRssSources } from './lib/db.mjs';
+import { saveDigest, saveArticles, getDigest, getDigestList, setDigestStatus, setDigestHighlights, getStats, createShareToken, getDigestByShareToken, saveRssSources, getRssSources, saveTranslation, getTranslation, getTranslationMap } from './lib/db.mjs';
 import { authMiddleware, isPasswordSet, setPassword, verifyPassword, verifySession, getClientIp, isLocked, getRemainingLockTime } from './lib/auth.mjs';
 import { saveApiConfig, loadApiConfig, API_PRESETS } from './lib/config.mjs';
 import { translateArticle } from './lib/translate.mjs';
@@ -315,6 +315,40 @@ function getApiOpts() {
   };
 }
 
+// ── Pre-translate all articles after digest generation ────────────
+async function preTranslateArticles(articles, apiOpts) {
+  console.log(`[translate] Pre-translating ${articles.length} articles in background...`);
+  let done = 0;
+  for (const article of articles) {
+    const url = article.link || article.url;
+    if (!url) continue;
+    if (getTranslation(url)) { done++; continue; } // already cached
+    try {
+      // Collect full stream into result and save to DB
+      let fullText = '';
+      for await (const chunk of translateArticleStream(
+        url,
+        article.title || '',
+        article.description || article.summary || '',
+        apiOpts
+      )) {
+        // Extract text from SSE events
+        const m = chunk.match(/^event:chunk\ndata:(.+)/);
+        if (m) {
+          try { fullText += JSON.parse(m[1]).text || ''; } catch {}
+        }
+      }
+      done++;
+      console.log(`[translate] Pre-translated ${done}/${articles.length}: ${url.slice(0, 60)}`);
+    } catch (e) {
+      console.warn(`[translate] Pre-translate failed for ${url}: ${e.message}`);
+    }
+    // Small delay between articles to avoid rate limiting
+    await new Promise(r => setTimeout(r, 800));
+  }
+  console.log(`[translate] Pre-translation complete: ${done}/${articles.length}`);
+}
+
 // Non-streaming fallback (kept for compatibility)
 app.get('/api/article/translate', asyncHandler(async (req, res) => {
   const { url, title = '', desc = '' } = req.query;
@@ -326,6 +360,18 @@ app.get('/api/article/translate', asyncHandler(async (req, res) => {
   );
   res.json(result);
 }));
+
+// Return cached translation status for a list of URLs (for frontend badge display)
+app.post('/api/article/translations/status', (req, res) => {
+  const { urls = [] } = req.body || {};
+  const map = getTranslationMap(urls);
+  // Return only metadata (no full content) for status check
+  const status = {};
+  for (const [url, t] of Object.entries(map)) {
+    status[url] = { ready: true, titleZh: t.titleZh, summary: t.summary };
+  }
+  res.json({ ok: true, data: status });
+});
 
 // SSE streaming endpoint
 app.get('/api/article/translate/stream', async (req, res) => {
@@ -460,9 +506,12 @@ async function runDigestGeneration(apiKey, apiOpts, hours, topN) {
     saveArticles(dateStr, final);
     setDigestHighlights(dateStr, highlights);
     setDigestStatus(dateStr, 'done');
-
     updateGenerationState({ running: false, step: 'done', progress: `完成！精选 ${final.length} 篇`, startedAt: null });
     console.log(`[digest] Done: ${successCount} sources → ${allArticles.length} → ${recent.length} → ${final.length}`);
+
+    // ── Background pre-translation (non-blocking) ─────────────────
+    const apiOpts = getApiOpts();
+    if (apiOpts.apiKey) setImmediate(() => preTranslateArticles(final, apiOpts));
   } catch (err) {
     updateGenerationState({ running: false, step: 'error', progress: err.message, startedAt: null });
     try { setDigestStatus(dateStr, 'error'); } catch (_) {}

@@ -347,6 +347,60 @@ if ('serviceWorker' in navigator) {
     };
   }
 
+  // Pre-translation status cache (url → {titleZh, summary, content})
+  const preCache = {};
+
+  // Fetch pre-translation status for all visible articles
+  async function fetchTranslationStatus() {
+    const links = [...document.querySelectorAll('.article-card a[href], .top-card a[href]')];
+    const urls = [...new Set(
+      links.map(l => l.href).filter(u => u && !u.startsWith(location.origin))
+    )];
+    if (!urls.length) return;
+    try {
+      const res = await fetch('/api/article/translations/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ urls }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        Object.assign(preCache, data.data);
+        markReadyArticles();
+      }
+    } catch {}
+  }
+
+  // Add "已翻译" badge to pre-translated articles
+  function markReadyArticles() {
+    document.querySelectorAll('.article-card, .top-card').forEach(card => {
+      const link = card.querySelector('a[href]');
+      if (!link) return;
+      const url = link.href;
+      if (!preCache[url]?.ready) return;
+      if (card.querySelector('.tm-ready-badge')) return; // already marked
+      const badge = document.createElement('span');
+      badge.className = 'tm-ready-badge';
+      badge.textContent = '已翻译';
+      // Insert after the title element
+      const title = card.querySelector('h3,h4,.article-title');
+      if (title) title.insertAdjacentElement('afterend', badge);
+      else card.prepend(badge);
+    });
+  }
+
+  // Show pre-cached translation instantly (no loading)
+  function showInstant(data) {
+    loading.classList.add('hidden');
+    errBox.classList.add('hidden');
+    content.classList.remove('hidden');
+    tmTitle.textContent = data.titleZh || '';
+    tmSumm.textContent  = data.summary  || '';
+    tmBody.innerHTML = '';
+    const paras = (data.content || '').split(/\n\n+/).filter(Boolean);
+    tmBody.innerHTML = paras.map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+  }
+
   // Attach click handlers after digest renders
   function attachHandlers() {
     document.querySelectorAll('.article-card a[href], .top-card a[href]').forEach(link => {
@@ -366,8 +420,25 @@ if ('serviceWorker' in navigator) {
         tmOrig.href = url;
         tmFall.href = url;
         openModal();
-        showLoading();
-        startStream(url, title, desc);
+
+        // Pre-cached? Show instantly
+        if (preCache[url]?.ready && preCache[url]?.content) {
+          showInstant(preCache[url]);
+        } else if (preCache[url]?.ready) {
+          // Status cached but no content yet — fetch full translation
+          showLoading('加载译文…');
+          fetch(`/api/article/translate?${new URLSearchParams({ url, title: title.slice(0,200), desc: desc.slice(0,500) })}`)
+            .then(r => r.json())
+            .then(d => {
+              if (d.ok) { preCache[url] = { ...d, ready: true }; showInstant(d); }
+              else showError(d.error || '翻译失败', url);
+            })
+            .catch(() => showError('网络错误', url));
+        } else {
+          // Not pre-translated — stream it
+          showLoading();
+          startStream(url, title, desc);
+        }
       });
     });
   }
@@ -375,5 +446,7 @@ if ('serviceWorker' in navigator) {
   tmClose.addEventListener('click', closeModal);
   modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
-  document.addEventListener('digestRendered', () => setTimeout(attachHandlers, 100));
+  document.addEventListener('digestRendered', () => {
+    setTimeout(() => { attachHandlers(); fetchTranslationStatus(); }, 150);
+  });
 })();
