@@ -239,7 +239,7 @@ if ('serviceWorker' in navigator) {
     if (!currentUrl) return;
     tmBody.innerHTML = '';
     showLoading('正在重新翻译…');
-    fetch('/api/article/retranslate', {
+    authFetch('/api/article/retranslate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: currentUrl, title: currentTitle, desc: currentDesc }),
@@ -252,6 +252,19 @@ if ('serviceWorker' in navigator) {
       .catch(() => showError('网络错误', currentUrl));
   });
 
+
+  // Auth helper — reuse app.js global token
+  function getAuthHeaders() {
+    const t = window.authToken || localStorage.getItem('auth_token') || '';
+    return t ? { 'X-Auth-Token': t } : {};
+  }
+  function authFetch(url, opts = {}) {
+    opts.headers = { ...opts.headers, ...getAuthHeaders() };
+    return fetch(url, opts);
+  }
+  function authToken() {
+    return window.authToken || localStorage.getItem('auth_token') || '';
+  }
   function openModal() {
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -330,6 +343,8 @@ if ('serviceWorker' in navigator) {
       desc:  desc.slice(0, 500),
     });
 
+    const tok = authToken();
+    if (tok) params.set('token', tok);
     const es = new EventSource(`/api/article/translate/stream?${params}`);
     currentES = es;
 
@@ -392,7 +407,7 @@ if ('serviceWorker' in navigator) {
     )];
     if (!urls.length) return;
     try {
-      const res = await fetch('/api/article/translations/status', {
+      const res = await authFetch('/api/article/translations/status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ urls }),
@@ -476,7 +491,7 @@ if ('serviceWorker' in navigator) {
         } else if (preCache[url]?.ready) {
           // Status cached but no content yet — fetch full translation
           showLoading('加载译文…');
-          fetch(`/api/article/translate?${new URLSearchParams({ url, title: title.slice(0,200), desc: desc.slice(0,500) })}`)
+          authFetch(`/api/article/translate?${new URLSearchParams({ url, title: title.slice(0,200), desc: desc.slice(0,500) })}`)
             .then(r => r.json())
             .then(d => {
               if (d.ok) { preCache[url] = { ...d, ready: true }; showInstant(d); }
@@ -501,7 +516,7 @@ if ('serviceWorker' in navigator) {
     if (progressTimer) return;
     progressTimer = setInterval(async () => {
       try {
-        const res = await fetch('/api/translate/progress');
+        const res = await authFetch('/api/translate/progress');
         const { data } = await res.json();
         updateProgressBanner(data);
         if (!data.running) {
@@ -535,7 +550,7 @@ if ('serviceWorker' in navigator) {
       fetchTranslationStatus();
       // Check if background translation is running
       try {
-        const res = await fetch('/api/translate/progress');
+        const res = await authFetch('/api/translate/progress');
         const { data } = await res.json();
         if (data.running) { updateProgressBanner(data); startProgressPolling(); }
       } catch {}
