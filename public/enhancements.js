@@ -226,6 +226,7 @@ if ('serviceWorker' in navigator) {
   const tmOrig       = document.getElementById('tmOrigLink');
   const tmFall       = document.getElementById('tmFallbackLink');
   const tmRetranslate = document.getElementById('tmRetranslate');
+  const tmDownload   = document.getElementById('tmDownload');
   const tmFontInc    = document.getElementById('tmFontInc');
   const tmFontDec    = document.getElementById('tmFontDec');
   if (!modal) return;
@@ -243,6 +244,72 @@ if ('serviceWorker' in navigator) {
   applyFontSize();
 
   tmFontInc?.addEventListener('click', () => { fontSize = Math.min(22, fontSize + 1); applyFontSize(); });
+
+  // Download translated article as Markdown
+  tmDownload?.addEventListener('click', () => {
+    const title   = tmTitle.textContent.trim();
+    const summary = tmSumm.textContent.trim();
+    // Get raw markdown from streamBuffer if streaming, else reconstruct from DOM
+    const bodyMd  = currentStreamBuffer || domToMarkdown(tmBody);
+    const origUrl = tmOrig.href;
+    const date    = new Date().toLocaleDateString('zh-CN');
+
+    const md = [
+      `# ${title}`,
+      '',
+      `> ${summary}`,
+      '',
+      '---',
+      '',
+      bodyMd,
+      '',
+      '---',
+      '',
+      `原文链接：${origUrl}`,
+      `下载时间：${date}`,
+    ].join('\n');
+
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = sanitizeFilename(title) + '.md';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  function sanitizeFilename(name) {
+    return (name || 'article').replace(/[/\\?%*:|"<>]/g, '-').slice(0, 80);
+  }
+
+  // Convert rendered HTML back to rough Markdown for download
+  function domToMarkdown(el) {
+    let md = '';
+    el.childNodes.forEach(node => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        md += node.textContent;
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const tag = node.tagName.toLowerCase();
+        const text = node.innerText || node.textContent || '';
+        if (tag === 'h1') md += '\n# ' + text + '\n';
+        else if (tag === 'h2') md += '\n## ' + text + '\n';
+        else if (tag === 'h3') md += '\n### ' + text + '\n';
+        else if (tag === 'p') md += '\n' + text + '\n';
+        else if (tag === 'ul') {
+          node.querySelectorAll('li').forEach(li => { md += '- ' + li.textContent + '\n'; });
+        } else if (tag === 'ol') {
+          node.querySelectorAll('li').forEach((li, i) => { md += (i+1) + '. ' + li.textContent + '\n'; });
+        } else if (tag === 'blockquote') md += '\n> ' + text + '\n';
+        else if (tag === 'strong' || tag === 'b') md += '**' + text + '**';
+        else if (tag === 'em' || tag === 'i') md += '*' + text + '*';
+        else if (tag === 'code') md += '`' + text + '`';
+        else if (tag === 'pre') md += '\n```\n' + text + '\n```\n';
+        else if (tag === 'hr') md += '\n---\n';
+        else if (!['div','span','a'].includes(tag)) md += text;
+        else md += text;
+      }
+    });
+    return md.trim();
+  }
   tmFontDec?.addEventListener('click', () => { fontSize = Math.max(12, fontSize - 1); applyFontSize(); });
 
   // Re-translate button
@@ -312,11 +379,13 @@ if ('serviceWorker' in navigator) {
   // Streaming accumulator — render Markdown progressively
   let streamBuffer = '';
   let streamRenderTimer = null;
+  let currentStreamBuffer = ''; // kept for download after stream completes
 
   function appendChunk(text) {
     loading.classList.add('hidden');
     content.classList.remove('hidden');
     streamBuffer += text;
+    currentStreamBuffer = streamBuffer;
     // Throttle render to 100ms for performance
     if (streamRenderTimer) return;
     streamRenderTimer = setTimeout(() => {
@@ -337,6 +406,7 @@ if ('serviceWorker' in navigator) {
 
   function startStream(url, title, desc) {
     streamBuffer = '';
+    currentStreamBuffer = '';
     streamRenderTimer = null;
     tmBody.innerHTML = '';
     tmTitle.textContent = '';
@@ -459,6 +529,7 @@ if ('serviceWorker' in navigator) {
     tmTitle.textContent = data.titleZh || '';
     tmSumm.textContent  = data.summary  || '';
     tmBody.innerHTML = '';
+    currentStreamBuffer = data.content || '';
     tmBody.innerHTML = renderMd(data.content || '');
     appendOrigLink(data.url || currentUrl || tmOrig.href);
   }
