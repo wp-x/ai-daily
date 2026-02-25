@@ -540,9 +540,8 @@ async function runDigestGeneration(apiKey, apiOpts, hours, topN) {
     console.log(`[digest] Done: ${successCount} sources → ${allArticles.length} → ${recent.length} → ${final.length}`);
 
     // ── Background pre-translation (non-blocking) ─────────────────
-    const apiOpts = getApiOpts();
-    const translateOpts = { ...apiOpts, apiKey };
-    if (apiKey) setImmediate(() => preTranslateArticles(final, translateOpts));
+    const preTransOpts = { ...getApiOpts(), apiKey };
+    if (apiKey) setImmediate(() => preTranslateArticles(final, preTransOpts));
   } catch (err) {
     updateGenerationState({ running: false, step: 'error', progress: err.message, startedAt: null });
     try { setDigestStatus(dateStr, 'error'); } catch (_) {}
