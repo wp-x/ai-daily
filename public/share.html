@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 每日精选</title>
+  <meta name="description" content="全球 AI 行业每日精选">
+  <!-- Open Graph -->
+  <meta property="og:title" content="AI 每日精选">
+  <meta property="og:description" content="全球 AI 行业精选内容，每日更新">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cream: { 50:'#faf7f0', 100:'#f3ede0', 200:'#e5dcc9', 300:'#d1c5ad' },
+            ink:   { 700:'#2e2b1e', 800:'#211f15', 900:'#161410', 950:'#0d0c08' },
+            gold:  { 300:'#e0c070', 400:'#d4a850', 500:'#c09040', 600:'#a87830' },
+          }
+        }
+      }
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    /* Share page overrides */
+    .share-hero {
+      background: linear-gradient(160deg, #0d0c08 0%, #1a1710 60%, #241f10 100%);
+      padding: 48px 24px 36px;
+      text-align: center;
+    }
+    .share-badge {
+      display: inline-block;
+      font-size: 9px; font-weight: 700; letter-spacing: 0.18em;
+      color: rgba(201,160,48,0.7); border: 1px solid rgba(201,160,48,0.25);
+      padding: 4px 12px; border-radius: 20px; text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+    .share-title {
+      font-size: clamp(2rem, 6vw, 3rem);
+      font-weight: 700; color: #f0e4c0;
+      letter-spacing: -0.03em; line-height: 1;
+      margin-bottom: 10px;
+    }
+    .share-tagline {
+      font-size: 13px; color: rgba(201,160,48,0.6);
+      letter-spacing: 0.12em; margin-bottom: 6px;
+    }
+    .share-date {
+      font-size: 12px; color: rgba(255,255,255,0.3);
+      letter-spacing: 0.06em;
+    }
+    .share-rule {
+      width: 48px; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201,160,48,0.5), transparent);
+      margin: 20px auto 0;
+    }
+    .share-footer-bar {
+      text-align: center; padding: 32px 16px;
+      font-size: 11px; color: rgba(100,90,70,0.6);
+      letter-spacing: 0.05em;
+      border-top: 1px solid #ede4d0;
+      margin-top: 40px;
+    }
+    .share-footer-bar a {
+      color: rgba(184,144,44,0.7);
+      text-decoration: none;
+    }
+    .share-watermark {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+      color: rgba(140,120,80,0.5); text-transform: uppercase;
+    }
+    /* Error / loading */
+    .share-state {
+      text-align: center; padding: 80px 24px;
+      color: rgba(100,90,70,0.6); font-size: 14px;
+    }
+    .share-spinner {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 2px solid rgba(184,144,44,0.15);
+      border-top-color: rgba(184,144,44,0.6);
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Translation modal — reuse main styles */
+    #tmBody h2 {
+      font-size: 1.1em; font-weight: 700; color: #2d2010;
+      margin: 1.8em 0 0.5em; padding: 6px 0 6px 10px;
+      border-left: 3px solid #b8902c;
+      background: linear-gradient(90deg, rgba(184,144,44,0.07) 0%, transparent 100%);
+    }
+  </style>
+</head>
+
+<body class="bg-cream-100 text-ink-800 min-h-screen antialiased">
+
+<!-- Reading progress -->
+<div id="readingProgress"></div>
+<button id="backToTop" aria-label="回到顶部">
+  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
+  </svg>
+</button>
+<div id="toastContainer"></div>
+
+<!-- Translation Modal (same as main) -->
+<div id="translateModal" class="hidden fixed inset-0 z-50 flex items-start justify-center" style="background:rgba(20,18,12,0.72);backdrop-filter:blur(4px);overflow-y:auto;padding:32px 16px 48px;">
+  <div class="translate-modal-box">
+    <div class="tm-header">
+      <div class="tm-meta">
+        <span class="tm-badge">中文译文</span>
+        <a id="tmOrigLink" href="#" target="_blank" rel="noopener" class="tm-orig-link">查看原文 ↗</a>
+      </div>
+      <div class="tm-actions">
+        <button id="tmFontDec" class="tm-action-btn" title="缩小字号">A-</button>
+        <button id="tmFontInc" class="tm-action-btn" title="放大字号">A+</button>
+        <button id="tmClose" class="tm-close" aria-label="关闭">✕</button>
+      </div>
+    </div>
+    <div id="tmLoading" class="tm-loading">
+      <div class="tm-spinner"></div>
+      <p id="tmLoadingText" class="tm-loading-text">正在抓取原文并翻译，请稍候…</p>
+    </div>
+    <div id="tmError" class="hidden tm-error">
+      <p id="tmErrorMsg"></p>
+      <a id="tmFallbackLink" href="#" target="_blank" rel="noopener" class="tm-fallback-btn">前往原文阅读 ↗</a>
+    </div>
+    <div id="tmContent" class="hidden">
+      <h1 id="tmTitle" class="tm-title"></h1>
+      <p id="tmSummary" class="tm-summary"></p>
+      <div class="tm-divider"></div>
+      <div id="tmBody" class="tm-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Hero -->
+<header class="share-hero">
+  <div class="share-badge">DAILY INTELLIGENCE · SHARED</div>
+  <h1 class="share-title">AI 精选</h1>
+  <p class="share-tagline">全球 AI 行业精选</p>
+  <p class="share-date" id="shareDate"></p>
+  <div class="share-rule"></div>
+</header>
+
+<!-- Loading state -->
+<div id="shareLoading" class="share-state">
+  <div class="share-spinner"></div>
+  <p>加载中…</p>
+</div>
+
+<!-- Error state -->
+<div id="shareError" class="share-state hidden">
+  <p style="font-size:32px; margin-bottom:12px;">🔗</p>
+  <p style="font-weight:600; color:#5c4a2a; margin-bottom:6px;">链接已失效或不存在</p>
+  <p style="font-size:12px;">分享链接有时效限制，请联系分享者获取最新链接</p>
+</div>
+
+<!-- Content -->
+<main id="shareContent" class="hidden page-body"></main>
+
+<!-- Footer -->
+<footer class="share-footer-bar">
+  <span class="share-watermark">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+    </svg>
+    AI 每日精选
+  </span>
+  &nbsp;·&nbsp; 由 AI 自动生成，仅供参考
+</footer>
+
+<script>
+  // Share page: no auth token → disable translation modal, links open directly
+  window.__shareMode = true;
+</script>
+<script src="/enhancements.js"></script>
+<script>
+(async function initSharePage() {
+  const token = window.location.pathname.match(/\/share\/([a-f0-9]+)/)?.[1];
+  if (!token) {
+    document.getElementById('shareLoading').classList.add('hidden');
+    document.getElementById('shareError').classList.remove('hidden');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/share/${token}`);
+    const data = await res.json();
+
+    if (!data.ok || !data.data) {
+      document.getElementById('shareLoading').classList.add('hidden');
+      document.getElementById('shareError').classList.remove('hidden');
+      return;
+    }
+
+    const digest = data.data;
+
+    // Update date
+    if (digest.date) {
+      const d = new Date(digest.date);
+      document.getElementById('shareDate').textContent =
+        d.toLocaleDateString('zh-CN', { year:'numeric', month:'long', day:'numeric', weekday:'long' });
+      document.title = `AI 精选 · ${digest.date}`;
+    }
+
+    // Render content
+    renderShareDigest(digest);
+
+    document.getElementById('shareLoading').classList.add('hidden');
+    document.getElementById('shareContent').classList.remove('hidden');
+
+    // Fire digestRendered so enhancements.js hooks work (translation modal etc.)
+    document.dispatchEvent(new CustomEvent('digestRendered', { detail: { digest } }));
+
+  } catch (e) {
+    document.getElementById('shareLoading').classList.add('hidden');
+    document.getElementById('shareError').classList.remove('hidden');
+  }
+})();
+
+// ─── Render digest (mirrors app.js renderDigest but standalone) ───
+function renderShareDigest(digest) {
+  const container = document.getElementById('shareContent');
+  container.innerHTML = '';
+
+  const articles = digest.articles || [];
+  const highlights = digest.highlights || '';
+  const topArticles = articles.filter(a => a.isTop).slice(0, 3);
+  const allArticles = articles.filter(a => !a.isTop);
+
+  // ── 今日看点 ──
+  if (highlights) {
+    const sec = mkSection('✦', '今日看点');
+    const panel = mkPanel();
+    panel.innerHTML = `<div class="highlights-text">${escHtml(highlights)}</div>`;
+    sec.appendChild(panel);
+    container.appendChild(sec);
+  }
+
+  // ── 精选头条 ──
+  if (topArticles.length) {
+    const sec = mkSection('▲', '精选头条');
+    topArticles.forEach((a, i) => {
+      const card = document.createElement('div');
+      card.className = 'top-card';
+      card.innerHTML = `
+        <div class="top-card-rank">${['①','②','③'][i] || (i+1)}</div>
+        <div class="top-card-body">
+          <div class="top-card-meta">
+            <span class="article-cat">${escHtml(a.category || '')}</span>
+            <span class="article-source">${escHtml(a.source || '')}</span>
+          </div>
+          <a href="${escAttr(a.link||a.url||'#')}" target="_blank" rel="noopener"
+             class="top-card-title" data-title="${escAttr(a.title||'')}">
+            ${escHtml(a.title_zh || a.title || '')}
+          </a>
+          <p class="top-card-desc">${escHtml(a.summary_zh || a.description || '')}</p>
+        </div>`;
+      sec.appendChild(card);
+    });
+    container.appendChild(sec);
+  }
+
+  // ── 分类筛选 ──
+  const cats = ['all', ...new Set(allArticles.map(a => a.category).filter(Boolean))];
+  if (cats.length > 1) {
+    const sec = document.createElement('section');
+    sec.className = 'skel-section';
+    const row = document.createElement('div');
+    row.className = 'cat-row';
+    cats.forEach(cat => {
+      const btn = document.createElement('button');
+      btn.className = 'cat-btn' + (cat === 'all' ? ' active' : '');
+      btn.dataset.cat = cat;
+      btn.textContent = cat === 'all' ? '全部' : cat;
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.article-card').forEach(card => {
+          card.closest('.article-wrap')?.style.setProperty('display', cat === 'all' || card.dataset.cat === cat ? '' : 'none');
+        });
+      });
+      row.appendChild(btn);
+    });
+    sec.appendChild(row);
+    container.appendChild(sec);
+  }
+
+  // ── 全部精选 ──
+  if (allArticles.length) {
+    const sec = mkSection('◈', '全部精选');
+    const panel = mkPanel();
+    allArticles.forEach((a, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'article-wrap';
+      const card = document.createElement('div');
+      card.className = 'article-card';
+      card.dataset.cat = a.category || '';
+      card.innerHTML = `
+        <div class="article-no">No.${i+1}</div>
+        <div class="article-body">
+          <div class="article-meta-row">
+            <span class="article-cat">${escHtml(a.category || '')}</span>
+            <span class="article-source">${escHtml(a.source || '')}</span>
+          </div>
+          <a href="${escAttr(a.link||a.url||'#')}" target="_blank" rel="noopener"
+             class="article-title" data-title="${escAttr(a.title||'')}">
+            ${escHtml(a.title_zh || a.title || '')}
+          </a>
+          <p class="article-desc">${escHtml(a.summary_zh || a.description || '')}</p>
+        </div>`;
+      wrap.appendChild(card);
+      panel.appendChild(wrap);
+    });
+    sec.appendChild(panel);
+    container.appendChild(sec);
+  }
+}
+
+function mkSection(icon, label) {
+  const sec = document.createElement('section');
+  sec.className = 'skel-section';
+  const hdr = document.createElement('div');
+  hdr.className = 'panel-header';
+  hdr.innerHTML = `<span class="panel-icon">${icon}</span><span class="panel-label">${label}</span>`;
+  sec.appendChild(hdr);
+  return sec;
+}
+function mkPanel() {
+  const p = document.createElement('div');
+  p.className = 'panel';
+  return p;
+}
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(s) { return escHtml(s); }
+</script>
+</body>
+</html>

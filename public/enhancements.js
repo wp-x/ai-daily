@@ -203,6 +203,17 @@ if ('serviceWorker' in navigator) {
    ARTICLE TRANSLATION MODAL
    ══════════════════════════════════════════════════════════════ */
 (function initTranslation() {
+  // Share mode: no auth, skip translation modal
+  if (window.__shareMode) {
+    // Let all external links open normally
+    document.addEventListener('digestRendered', () => {
+      document.querySelectorAll('.article-card a[href], .top-card a[href]').forEach(link => {
+        link.target = '_blank';
+        link.rel = 'noopener';
+      });
+    });
+    return;
+  }
   const modal        = document.getElementById('translateModal');
   const loading      = document.getElementById('tmLoading');
   const errBox       = document.getElementById('tmError');

@@ -64,6 +64,11 @@ function asyncHandler(fn) {
 app.get('/health', (req, res) => res.send('ok'));
 
 // --- Public share routes (NO auth) ---
+// Serve share page HTML
+app.get('/share/:token', (req, res) => {
+  res.sendFile(join(__dirname, 'public', 'share.html'));
+});
+
 app.get('/api/share/:token', (req, res) => {
   const digest = getDigestByShareToken(req.params.token);
   if (!digest || !digest.articles) return res.status(404).json({ ok: false, error: 'not_found' });
