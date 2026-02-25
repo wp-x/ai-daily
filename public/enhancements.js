@@ -482,15 +482,8 @@ if ('serviceWorker' in navigator) {
         if (preCache[url]?.ready && preCache[url]?.content) {
           showInstant(preCache[url]);
         } else if (preCache[url]?.ready) {
-          // Status cached but no content yet — fetch full translation
-          showLoading('加载译文…');
-          authFetch(`/api/article/translate?${new URLSearchParams({ url, title: title.slice(0,200), desc: desc.slice(0,500) })}`)
-            .then(r => r.json())
-            .then(d => {
-              if (d.ok) { preCache[url] = { ...d, ready: true }; showInstant(d); }
-              else showError(d.error || '翻译失败', url);
-            })
-            .catch(() => showError('网络错误', url));
+          // Should have content from status API — show it
+          showInstant(preCache[url]);
         } else {
           // Not pre-translated — stream it
           showLoading();

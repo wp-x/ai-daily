@@ -370,9 +370,7 @@ app.get('/api/article/translate', asyncHandler(async (req, res) => {
   if (!url) return res.status(400).json({ ok: false, error: 'url required' });
   const opts = getApiOpts();
   if (!opts.apiKey) return res.status(400).json({ ok: false, error: '请先在设置中配置 API Key' });
-  const result = await translateArticle(
-    decodeURIComponent(url), decodeURIComponent(title), decodeURIComponent(desc), opts
-  );
+  const result = await translateArticle(url, title, desc, opts);
   res.json(result);
 }));
 
@@ -382,7 +380,7 @@ app.post('/api/article/translations/status', (req, res) => {
   const map = getTranslationMap(urls);
   const status = {};
   for (const [url, t] of Object.entries(map)) {
-    status[url] = { ready: true, titleZh: t.titleZh, summary: t.summary };
+    status[url] = { ok: true, ready: true, url, titleZh: t.titleZh, summary: t.summary, content: t.content || '' };
   }
   res.json({ ok: true, data: status });
 });
