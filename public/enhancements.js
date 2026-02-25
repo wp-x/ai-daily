@@ -265,6 +265,15 @@ if ('serviceWorker' in navigator) {
   function authToken() {
     return window.authToken || localStorage.getItem('auth_token') || '';
   }
+  // Configure marked.js
+  if (window.marked) {
+    marked.setOptions({ breaks: true, gfm: true });
+  }
+  function renderMd(text) {
+    if (!text) return '';
+    return window.marked ? marked.parse(text) : text.replace(/\n/g, '<br>');
+  }
+
   function openModal() {
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -289,50 +298,35 @@ if ('serviceWorker' in navigator) {
     tmFall.href = url;
   }
 
-  // Append a paragraph chunk to body (streaming)
-  let pendingText = '';
-  let currentPara = null;
+  // Streaming accumulator — render Markdown progressively
+  let streamBuffer = '';
+  let streamRenderTimer = null;
+
   function appendChunk(text) {
     loading.classList.add('hidden');
     content.classList.remove('hidden');
-    pendingText += text;
-    // Split on double newlines to create paragraphs
-    const parts = pendingText.split(/\n\n/);
-    pendingText = parts.pop(); // last part may be incomplete
-    for (const part of parts) {
-      if (part.trim()) {
-        const p = document.createElement('p');
-        p.innerHTML = part.replace(/\n/g, '<br>');
-        tmBody.appendChild(p);
-        currentPara = null;
-      }
-    }
-    // Stream remaining text into current paragraph
-    if (pendingText) {
-      if (!currentPara) {
-        currentPara = document.createElement('p');
-        currentPara.className = 'tm-streaming';
-        tmBody.appendChild(currentPara);
-      }
-      currentPara.innerHTML = pendingText.replace(/\n/g, '<br>');
-    }
-    // Auto-scroll modal
-    const box = modal.querySelector('.translate-modal-box');
-    if (box) box.scrollTop = box.scrollHeight;
+    streamBuffer += text;
+    // Throttle render to 100ms for performance
+    if (streamRenderTimer) return;
+    streamRenderTimer = setTimeout(() => {
+      streamRenderTimer = null;
+      tmBody.innerHTML = renderMd(streamBuffer) + '<span class="tm-streaming-cursor">▍</span>';
+      const box = modal.querySelector('.translate-modal-box');
+      if (box) box.scrollTop = box.scrollHeight;
+    }, 100);
   }
 
   function flushPending() {
-    if (pendingText.trim() && currentPara) {
-      currentPara.classList.remove('tm-streaming');
-      currentPara.innerHTML = pendingText.replace(/\n/g, '<br>');
+    if (streamRenderTimer) { clearTimeout(streamRenderTimer); streamRenderTimer = null; }
+    if (streamBuffer) {
+      tmBody.innerHTML = renderMd(streamBuffer);
     }
-    pendingText = '';
-    currentPara = null;
+    streamBuffer = '';
   }
 
   function startStream(url, title, desc) {
-    pendingText = '';
-    currentPara = null;
+    streamBuffer = '';
+    streamRenderTimer = null;
     tmBody.innerHTML = '';
     tmTitle.textContent = '';
     tmSumm.textContent = '';
@@ -454,8 +448,7 @@ if ('serviceWorker' in navigator) {
     tmTitle.textContent = data.titleZh || '';
     tmSumm.textContent  = data.summary  || '';
     tmBody.innerHTML = '';
-    const paras = (data.content || '').split(/\n\n+/).filter(Boolean);
-    tmBody.innerHTML = paras.map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+    tmBody.innerHTML = renderMd(data.content || '');
     appendOrigLink(data.url || currentUrl || tmOrig.href);
   }
 

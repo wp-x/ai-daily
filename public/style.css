@@ -1286,3 +1286,49 @@ body { letter-spacing: -0.01em; background: #ece5d5; }
   height: 100%; background: #b8902c;
   border-radius: 2px; transition: width 0.4s ease;
 }
+
+/* ── Markdown rendered content in translation modal ── */
+#tmBody h1, #tmBody h2, #tmBody h3, #tmBody h4 {
+  font-weight: 700; color: #2d2416; margin: 1.4em 0 0.5em;
+  line-height: 1.3; letter-spacing: -0.01em;
+}
+#tmBody h2 { font-size: 1.1em; border-bottom: 1px solid #ede4d0; padding-bottom: 6px; }
+#tmBody h3 { font-size: 1em; color: #5c4a2a; }
+#tmBody p  { margin: 0.75em 0; line-height: 1.85; }
+#tmBody ul, #tmBody ol { padding-left: 1.5em; margin: 0.6em 0; }
+#tmBody li { margin: 0.35em 0; line-height: 1.75; }
+#tmBody li::marker { color: #b8902c; }
+#tmBody strong { font-weight: 700; color: #2d2416; }
+#tmBody em { font-style: italic; color: #5c4a2a; }
+#tmBody blockquote {
+  border-left: 3px solid #b8902c; margin: 1em 0;
+  padding: 6px 14px; background: rgba(184,144,44,0.06);
+  color: #6b5a3a; border-radius: 0 4px 4px 0;
+}
+#tmBody code {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.84em; background: rgba(0,0,0,0.06);
+  padding: 1px 5px; border-radius: 3px; color: #b8371a;
+}
+#tmBody pre {
+  background: #1e1a12; border-radius: 8px; padding: 14px 16px;
+  overflow-x: auto; margin: 1em 0;
+}
+#tmBody pre code { background: none; color: #e8d8a0; font-size: 0.82em; padding: 0; }
+#tmBody a { color: #b8902c; text-decoration: underline; text-underline-offset: 2px; }
+#tmBody hr { border: none; border-top: 1px solid #ede4d0; margin: 1.5em 0; }
+
+/* Dark mode */
+.dark #tmBody h2 { border-bottom-color: rgba(255,255,255,0.08); color: #e8d8a0; }
+.dark #tmBody h1,.dark #tmBody h3,.dark #tmBody h4 { color: #e8d8a0; }
+.dark #tmBody strong { color: #e8d8a0; }
+.dark #tmBody blockquote { background: rgba(184,144,44,0.08); color: rgba(232,216,160,0.7); }
+.dark #tmBody code { background: rgba(255,255,255,0.08); color: #ff9060; }
+.dark #tmBody pre { background: #0e0c08; }
+.dark #tmBody hr { border-top-color: rgba(255,255,255,0.08); }
+
+/* Streaming cursor */
+.tm-streaming-cursor {
+  display: inline-block; color: #b8902c;
+  animation: blink 0.9s step-end infinite; margin-left: 2px;
+}
