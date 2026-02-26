@@ -560,12 +560,14 @@ if ('serviceWorker' in navigator) {
         tmFall.href = url;
         openModal();
 
-        // Pre-cached? Show instantly
-        if (preCache[url]?.ready && preCache[url]?.content) {
-          showInstant(preCache[url]);
-        } else if (preCache[url]?.ready) {
-          // Should have content from status API — show it
-          showInstant(preCache[url]);
+        // Pre-cached? Show instantly (only if content is substantial, not just a description)
+        const cached = preCache[url];
+        if (cached?.ready && cached?.content && cached.content.length > 200) {
+          showInstant(cached);
+        } else if (cached?.ready && (!cached?.content || cached.content.length <= 200)) {
+          // Batch-translated: content is just description — stream full article
+          showLoading('正在获取全文翻译…');
+          startStream(url, title, desc);
         } else {
           // Not pre-translated — stream it
           showLoading();
