@@ -1,6 +1,7 @@
 import express from 'express';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { readFileSync } from 'fs';
 import { RSS_FEEDS } from './lib/rss-list.mjs';
 import { fetchAllFeeds } from './lib/feeds.mjs';
 import { scoreArticles } from './lib/scoring.mjs';
@@ -263,9 +264,18 @@ setImmediate(() => {
   if (pruned > 0) console.log(`[translate] Pruned ${pruned} expired translations`);
 });
 
+// Service Worker — inject build timestamp to bust stale caches on each deploy
+const BUILD_ID = Date.now().toString(36);
+const swTemplate = readFileSync(join(__dirname, 'public', 'sw.js'), 'utf-8');
+const swContent  = swTemplate.replace('__BUILD__', BUILD_ID);
+app.get('/sw.js', (req, res) => {
+  res.set({ 'Content-Type': 'application/javascript', 'Cache-Control': 'no-store' });
+  res.send(swContent);
+});
+
 // Static files with cache control
 app.use(express.static(join(__dirname, 'public'), {
-  maxAge: 0, // Disable caching in development
+  maxAge: 0,
   etag: false,
   lastModified: false,
 }));
