@@ -2,7 +2,11 @@ FROM node:24-alpine
 
 WORKDIR /app
 
-# Install dependencies first (better layer caching)
+# Install Python3 + notebooklm-py (for NotebookLM podcast generation)
+RUN apk add --no-cache python3 py3-pip && \
+    pip3 install --break-system-packages notebooklm-py
+
+# Install Node dependencies first (better layer caching)
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
