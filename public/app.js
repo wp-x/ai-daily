@@ -153,6 +153,7 @@ function renderArticles() {
             <span class="font-medium truncate">${a.source_name}</span>
             <span class="opacity-30 shrink-0">·</span>
             <span class="shrink-0 whitespace-nowrap">${timeAgo(a.pub_date)}</span>
+            <button class="podcast-add-btn ml-auto" onclick="podcastAddArticle('${a.link.replace(/'/g,"\\'")}','${(a.title||'').replace(/'/g,"\\'")}','${(a.title_zh||a.title||'').replace(/'/g,"\\'")}')">🎙 加入播客</button>
           </div>
           ${(a.keywords||[]).length?`<div class="flex flex-wrap gap-2 mt-4">${a.keywords.map(k=>`<span class="keyword-tag">${k}</span>`).join('')}</div>`:''}
         </div>
@@ -232,6 +233,7 @@ document.querySelectorAll('.settings-tab').forEach(btn => {
     const tab = btn.dataset.tab;
     document.getElementById('apiTab').classList.toggle('hidden', tab !== 'api');
     document.getElementById('rssTab').classList.toggle('hidden', tab !== 'rss');
+    document.getElementById('podcastTab').classList.toggle('hidden', tab !== 'podcast');
     if (tab === 'rss') loadRssSources();
   });
 });
@@ -575,3 +577,185 @@ async function checkRunning() {
   const ok = await checkAuth();
   if (ok) { loadLatest(); loadDigestList(); checkRunning(); }
 })();
+
+// ── Podcast Panel ──────────────────────────────────────────────────────
+
+let podcastQueue = []; // { title, title_zh, link }
+let podcastTaskId = null;
+let podcastPollTimer = null;
+
+function podcastAddArticle(link, title, titleZh) {
+  if (podcastQueue.find(a => a.link === link)) {
+    showPodcastToast('已在列表中', 'warn');
+    return;
+  }
+  podcastQueue.push({ link, title, title_zh: titleZh });
+  renderPodcastQueue();
+  showPodcastPanel();
+}
+
+function podcastRemove(link) {
+  podcastQueue = podcastQueue.filter(a => a.link !== link);
+  renderPodcastQueue();
+  if (podcastQueue.length === 0) hidePodcastPanel();
+}
+
+function podcastClearAll() {
+  podcastQueue = [];
+  renderPodcastQueue();
+  hidePodcastPanel();
+}
+
+function showPodcastPanel() {
+  document.getElementById('podcastPanel').classList.remove('hidden');
+}
+function hidePodcastPanel() {
+  document.getElementById('podcastPanel').classList.add('hidden');
+}
+
+function renderPodcastQueue() {
+  const el = document.getElementById('podcastQueueList');
+  const countEl = document.getElementById('podcastQueueCount');
+  if (!el) return;
+  countEl.textContent = podcastQueue.length;
+  if (podcastQueue.length === 0) {
+    el.innerHTML = '<div class="podcast-empty-tip">还没有选中文章</div>';
+    return;
+  }
+  el.innerHTML = podcastQueue.map((a, i) => `
+    <div class="podcast-queue-item">
+      <span class="podcast-queue-num">${i + 1}</span>
+      <span class="podcast-queue-title" title="${escPod(a.title)}">${escPod(a.title_zh || a.title)}</span>
+      <button class="podcast-remove-btn" onclick="podcastRemove('${escPod(a.link)}')">✕</button>
+    </div>`).join('');
+}
+
+function escPod(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');
+}
+
+async function startPodcastGeneration() {
+  if (podcastQueue.length === 0) return;
+  if (podcastTaskId) { showPodcastToast('已有任务在进行中', 'warn'); return; }
+
+  const style = document.getElementById('podcastStyle').value;
+  const lang = document.getElementById('podcastLang').value;
+  const instructions = document.getElementById('podcastInstructions')?.value || '';
+
+  setPodcastUIState('generating');
+  document.getElementById('podcastProgress').textContent = '启动中...';
+  document.getElementById('podcastProgressBar').style.width = '0%';
+
+  try {
+    const res = await apiFetch('/api/podcast/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ articles: podcastQueue, style, lang, instructions })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.message);
+    podcastTaskId = data.taskId;
+    pollPodcastTask();
+  } catch (e) {
+    setPodcastUIState('idle');
+    showPodcastToast('启动失败: ' + e.message, 'error');
+  }
+}
+
+function pollPodcastTask() {
+  if (!podcastTaskId) return;
+  clearTimeout(podcastPollTimer);
+  podcastPollTimer = setTimeout(async () => {
+    try {
+      const res = await apiFetch(`/api/podcast/task/${podcastTaskId}`);
+      const data = await res.json();
+      if (!data.ok) { pollPodcastTask(); return; }
+      const task = data.task;
+      document.getElementById('podcastProgress').textContent = task.message || '';
+      document.getElementById('podcastProgressBar').style.width = (task.progress || 0) + '%';
+
+      if (task.status === 'completed') {
+        setPodcastUIState('done');
+        document.getElementById('podcastDownloadBtn').href = `/api/podcast/download/${task.mp3Filename}`;
+        document.getElementById('podcastDownloadBtn').download = task.mp3Filename;
+        showPodcastToast('🎙️ 播客生成完成！', 'success');
+        podcastTaskId = null;
+      } else if (task.status === 'failed') {
+        setPodcastUIState('idle');
+        showPodcastToast('生成失败: ' + task.error, 'error');
+        podcastTaskId = null;
+      } else {
+        pollPodcastTask();
+      }
+    } catch { pollPodcastTask(); }
+  }, 5000);
+}
+
+function setPodcastUIState(state) {
+  const generateBtn = document.getElementById('podcastGenerateBtn');
+  const progressArea = document.getElementById('podcastProgressArea');
+  const downloadArea = document.getElementById('podcastDownloadArea');
+
+  if (state === 'idle') {
+    generateBtn.disabled = false;
+    generateBtn.textContent = '🎙️ 生成播客';
+    progressArea.classList.add('hidden');
+    downloadArea.classList.add('hidden');
+  } else if (state === 'generating') {
+    generateBtn.disabled = true;
+    generateBtn.textContent = '生成中...';
+    progressArea.classList.remove('hidden');
+    downloadArea.classList.add('hidden');
+  } else if (state === 'done') {
+    generateBtn.disabled = false;
+    generateBtn.textContent = '🎙️ 再生成一次';
+    progressArea.classList.add('hidden');
+    downloadArea.classList.remove('hidden');
+  }
+}
+
+function showPodcastToast(msg, type = 'info') {
+  // Reuse existing toast if available, else alert
+  if (typeof showToast === 'function') { showToast(msg, type); return; }
+  alert(msg);
+}
+
+// Check podcast cookie config on settings open
+async function checkPodcastConfig() {
+  try {
+    const res = await apiFetch('/api/podcast/config');
+    const data = await res.json();
+    const statusEl = document.getElementById('podcastCookieStatus');
+    if (!statusEl) return;
+    if (data.configured) {
+      statusEl.textContent = `✅ 已配置 (${data.cookieCount} 个 Cookie)`;
+      statusEl.className = 'podcast-config-status ok';
+    } else {
+      statusEl.textContent = '❌ 未配置，请粘贴 storage_state.json';
+      statusEl.className = 'podcast-config-status warn';
+    }
+  } catch {}
+}
+
+async function savePodcastCookie() {
+  const raw = document.getElementById('podcastCookieInput')?.value?.trim();
+  if (!raw) return;
+  try {
+    JSON.parse(raw); // validate
+    const res = await apiFetch('/api/podcast/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ storageJson: raw })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showPodcastToast('Cookie 保存成功', 'success');
+      document.getElementById('podcastCookieInput').value = '';
+      checkPodcastConfig();
+    } else {
+      showPodcastToast('保存失败: ' + data.message, 'error');
+    }
+  } catch (e) {
+    showPodcastToast('格式错误，请粘贴完整的 JSON: ' + e.message, 'error');
+  }
+}

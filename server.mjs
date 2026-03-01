@@ -10,6 +10,9 @@ import { generateHighlights } from './lib/highlights.mjs';
 import { saveDigest, saveArticles, getDigest, getDigestList, setDigestStatus, setDigestHighlights, getStats, createShareToken, getDigestByShareToken, saveRssSources, getRssSources, saveTranslation, getTranslation, getTranslationMap, deleteTranslation, pruneTranslations } from './lib/db.mjs';
 import { authMiddleware, isPasswordSet, setPassword, verifyPassword, verifySession, getClientIp, isLocked, getRemainingLockTime } from './lib/auth.mjs';
 import { saveApiConfig, loadApiConfig, API_PRESETS } from './lib/config.mjs';
+import { saveCookieStorage, loadCookieStorage, isCookieConfigured, generatePodcast, getPodcastTask, listPodcastTasks } from './lib/podcast.mjs';
+import { createReadStream, statSync } from 'fs';
+import { join as pathJoin } from 'path';
 import { translateArticle, translateArticleStream, batchTranslateArticles } from './lib/translate.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -570,6 +573,67 @@ app.use((err, req, res, next) => {
     res.status(500).json({ ok: false, error: 'internal_error', message: err.message || '服务器内部错误' });
   } else {
     res.status(500).send('Internal Server Error');
+  }
+});
+
+// ── Podcast routes ─────────────────────────────────────────────────────
+
+// GET /api/podcast/config — cookie status
+app.get('/api/podcast/config', (req, res) => {
+  const info = loadCookieStorage();
+  res.json({ ok: true, configured: !!info, cookieCount: info?.cookieCount || 0 });
+});
+
+// POST /api/podcast/config — save cookie
+app.post('/api/podcast/config', (req, res) => {
+  try {
+    const { storageJson } = req.body;
+    if (!storageJson) return res.status(400).json({ ok: false, message: '请提供 storage_state.json 内容' });
+    saveCookieStorage(typeof storageJson === 'string' ? storageJson : JSON.stringify(storageJson));
+    res.json({ ok: true, message: 'Cookie 保存成功' });
+  } catch (e) {
+    res.status(400).json({ ok: false, message: e.message });
+  }
+});
+
+// POST /api/podcast/generate — start generation
+app.post('/api/podcast/generate', asyncHandler(async (req, res) => {
+  const { articles, style = 'deep-dive', lang = 'zh', instructions = '' } = req.body;
+  if (!Array.isArray(articles) || articles.length === 0) {
+    return res.status(400).json({ ok: false, message: '请选择至少一篇文章' });
+  }
+  if (!isCookieConfigured()) {
+    return res.status(400).json({ ok: false, message: '未配置 Google Cookie，请先在设置中填写' });
+  }
+  const taskId = await generatePodcast({ articles, style, lang, instructions });
+  res.json({ ok: true, taskId });
+}));
+
+// GET /api/podcast/task/:id — poll status
+app.get('/api/podcast/task/:id', (req, res) => {
+  const task = getPodcastTask(req.params.id);
+  if (!task) return res.status(404).json({ ok: false, message: '任务不存在' });
+  res.json({ ok: true, task });
+});
+
+// GET /api/podcast/tasks — list recent tasks
+app.get('/api/podcast/tasks', (req, res) => {
+  res.json({ ok: true, tasks: listPodcastTasks() });
+});
+
+// GET /api/podcast/download/:filename — serve MP3
+app.get('/api/podcast/download/:filename', (req, res) => {
+  const filename = req.params.filename.replace(/[^a-zA-Z0-9_-]/g, '');
+  if (!filename.endsWith('.mp3')) return res.status(400).json({ ok: false, message: '无效文件名' });
+  const filepath = pathJoin(dirname(fileURLToPath(import.meta.url)), 'data', 'podcasts', filename);
+  try {
+    const stat = statSync(filepath);
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Content-Length', stat.size);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    createReadStream(filepath).pipe(res);
+  } catch {
+    res.status(404).json({ ok: false, message: '文件不存在' });
   }
 });
 
