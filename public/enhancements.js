@@ -82,7 +82,33 @@ window.showToast = function(message, type = 'info', sub = '') {
   maybeShow(); // check immediately
 
   // Hide skeleton once content is ready
+
+  // ── 为 top3 卡片注入「加入播客」按钮 ──────────────────────────────
+  function injectTop3PodcastBtns() {
+    document.querySelectorAll('.top-card').forEach(card => {
+      if (card.querySelector('.podcast-add-btn')) return; // 已有按钮
+      const link = card.querySelector('a[href]');
+      if (!link) return;
+      const url   = link.href;
+      const title = link.dataset.title || link.textContent.trim();
+      const titleZh = link.textContent.trim();
+      // 注入到 keywords 行之前，底部 footer 行之后
+      const footer = card.querySelector('.flex.items-center.gap-2.text-xs');
+      if (!footer) return;
+      const btn = document.createElement('button');
+      btn.className = 'podcast-add-btn mt-3 w-full';
+      btn.textContent = '🎙 加入播客';
+      btn.onclick = () => {
+        if (typeof podcastAddArticle === 'function') {
+          podcastAddArticle(url, title, titleZh);
+        }
+      };
+      footer.parentNode.insertBefore(btn, footer.nextSibling);
+    });
+  }
+
   document.addEventListener('digestRendered', () => {
+    injectTop3PodcastBtns();
     skeleton.classList.add('hidden');
     observer.disconnect();
   });
@@ -206,7 +232,33 @@ if ('serviceWorker' in navigator) {
   // Share mode: no auth, skip translation modal
   if (window.__shareMode) {
     // Let all external links open normally
-    document.addEventListener('digestRendered', () => {
+  
+  // ── 为 top3 卡片注入「加入播客」按钮 ──────────────────────────────
+  function injectTop3PodcastBtns() {
+    document.querySelectorAll('.top-card').forEach(card => {
+      if (card.querySelector('.podcast-add-btn')) return; // 已有按钮
+      const link = card.querySelector('a[href]');
+      if (!link) return;
+      const url   = link.href;
+      const title = link.dataset.title || link.textContent.trim();
+      const titleZh = link.textContent.trim();
+      // 注入到 keywords 行之前，底部 footer 行之后
+      const footer = card.querySelector('.flex.items-center.gap-2.text-xs');
+      if (!footer) return;
+      const btn = document.createElement('button');
+      btn.className = 'podcast-add-btn mt-3 w-full';
+      btn.textContent = '🎙 加入播客';
+      btn.onclick = () => {
+        if (typeof podcastAddArticle === 'function') {
+          podcastAddArticle(url, title, titleZh);
+        }
+      };
+      footer.parentNode.insertBefore(btn, footer.nextSibling);
+    });
+  }
+
+  document.addEventListener('digestRendered', () => {
+    injectTop3PodcastBtns();
       document.querySelectorAll('.article-card a[href], .top-card a[href]').forEach(link => {
         link.target = '_blank';
         link.rel = 'noopener';
@@ -614,7 +666,33 @@ if ('serviceWorker' in navigator) {
     banner.innerHTML = `<span>后台翻译中 ${state.done}/${state.total}</span><div class="tpb-bar"><div class="tpb-fill" style="width:${pct}%"></div></div>`;
   }
 
+
+  // ── 为 top3 卡片注入「加入播客」按钮 ──────────────────────────────
+  function injectTop3PodcastBtns() {
+    document.querySelectorAll('.top-card').forEach(card => {
+      if (card.querySelector('.podcast-add-btn')) return; // 已有按钮
+      const link = card.querySelector('a[href]');
+      if (!link) return;
+      const url   = link.href;
+      const title = link.dataset.title || link.textContent.trim();
+      const titleZh = link.textContent.trim();
+      // 注入到 keywords 行之前，底部 footer 行之后
+      const footer = card.querySelector('.flex.items-center.gap-2.text-xs');
+      if (!footer) return;
+      const btn = document.createElement('button');
+      btn.className = 'podcast-add-btn mt-3 w-full';
+      btn.textContent = '🎙 加入播客';
+      btn.onclick = () => {
+        if (typeof podcastAddArticle === 'function') {
+          podcastAddArticle(url, title, titleZh);
+        }
+      };
+      footer.parentNode.insertBefore(btn, footer.nextSibling);
+    });
+  }
+
   document.addEventListener('digestRendered', () => {
+    injectTop3PodcastBtns();
     setTimeout(async () => {
       attachHandlers();
       fetchTranslationStatus();
